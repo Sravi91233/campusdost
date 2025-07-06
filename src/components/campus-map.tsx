@@ -1,14 +1,16 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useJsApiLoader, GoogleMap, MarkerF, InfoWindowF, Polygon } from "@react-google-maps/api";
+import { useJsApiLoader, GoogleMap, MarkerF, InfoWindowF, Polygon, DirectionsRenderer } from "@react-google-maps/api";
 import type { MapLocation, MapCorners } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Search, BedDouble, Utensils, Library, Building2, School, Landmark } from "lucide-react";
+import { AlertTriangle, Search, BedDouble, Utensils, Library, Building2, School, Landmark, Navigation, XCircle, Loader2 } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useMap } from "@/context/MapContext";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Button } from "./ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const mapContainerStyle = {
   width: '100%',
@@ -53,6 +55,10 @@ export function CampusMap({ initialLocations, initialCorners }: { initialLocatio
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   
+  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
+  const [isDirectionsLoading, setIsDirectionsLoading] = useState(false);
+  const { toast } = useToast();
+
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
     libraries,
@@ -178,6 +184,42 @@ export function CampusMap({ initialLocations, initialCorners }: { initialLocatio
       setFocusedVenueName(null);
     }
   };
+
+  const handleGetDirections = (destination: MapLocation) => {
+    if (!navigator.geolocation) {
+      toast({ title: 'Geolocation is not supported by your browser.', variant: 'destructive' });
+      return;
+    }
+    setIsDirectionsLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const origin = { lat: position.coords.latitude, lng: position.coords.longitude };
+        const directionsService = new window.google.maps.DirectionsService();
+        
+        directionsService.route(
+          {
+            origin,
+            destination: destination.position,
+            travelMode: window.google.maps.TravelMode.WALKING,
+          },
+          (result, status) => {
+            if (status === window.google.maps.DirectionsStatus.OK && result) {
+              setDirections(result);
+              setSelectedLocation(null); // Close info window
+            } else {
+              toast({ title: 'Error fetching directions', description: 'Could not calculate the route. Please try again.', variant: 'destructive' });
+            }
+            setIsDirectionsLoading(false);
+          }
+        );
+      },
+      () => {
+        toast({ title: 'Unable to retrieve your location', description: 'Please enable location services to get directions.', variant: 'destructive' });
+        setIsDirectionsLoading(false);
+      }
+    );
+  };
   
   if (!GOOGLE_MAPS_API_KEY) {
     return (
@@ -217,7 +259,7 @@ export function CampusMap({ initialLocations, initialCorners }: { initialLocatio
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
         <div className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -225,24 +267,34 @@ export function CampusMap({ initialLocations, initialCorners }: { initialLocatio
             className="pl-9"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            disabled={!!directions}
           />
         </div>
-        <ToggleGroup
-            type="multiple"
-            variant="outline"
-            value={activeFilters}
-            onValueChange={(value) => setActiveFilters(value)}
-            className="flex-wrap justify-start"
-          >
-            {availableIcons.map(iconName => {
-                const IconComponent = iconMap[iconName];
-                return (
-                    <ToggleGroupItem key={iconName} value={iconName} aria-label={iconName}>
-                        <IconComponent className="h-4 w-4" />
-                    </ToggleGroupItem>
-                )
-            })}
-        </ToggleGroup>
+        <div className="flex gap-2">
+          <ToggleGroup
+              type="multiple"
+              variant="outline"
+              value={activeFilters}
+              onValueChange={(value) => setActiveFilters(value)}
+              className="flex-wrap justify-start"
+              aria-disabled={!!directions}
+            >
+              {availableIcons.map(iconName => {
+                  const IconComponent = iconMap[iconName];
+                  return (
+                      <ToggleGroupItem key={iconName} value={iconName} aria-label={iconName} disabled={!!directions}>
+                          <IconComponent className="h-4 w-4" />
+                      </ToggleGroupItem>
+                  )
+              })}
+          </ToggleGroup>
+          {directions && (
+            <Button variant="destructive" onClick={() => setDirections(null)}>
+                <XCircle className="mr-2" />
+                Clear Directions
+            </Button>
+          )}
+        </div>
       </div>
       <div className="w-full relative" style={mapContainerStyle}>
           <GoogleMap
@@ -271,7 +323,7 @@ export function CampusMap({ initialLocations, initialCorners }: { initialLocatio
               />
             )}
 
-            {filteredLocations.map(loc => (
+            {!directions && filteredLocations.map(loc => (
               <MarkerF
                 key={loc.id}
                 position={loc.position}
@@ -288,9 +340,20 @@ export function CampusMap({ initialLocations, initialCorners }: { initialLocatio
                 <div className="p-1 max-w-xs">
                   <h3 className="font-bold text-md mb-1">{selectedLocation.name}</h3>
                   <p className="text-sm">{selectedLocation.description}</p>
+                   <Button
+                      size="sm"
+                      className="mt-2 w-full"
+                      onClick={() => handleGetDirections(selectedLocation)}
+                      disabled={isDirectionsLoading}
+                  >
+                      {isDirectionsLoading ? <Loader2 className="mr-2 animate-spin" /> : <Navigation className="mr-2" />}
+                      Get Directions
+                  </Button>
                 </div>
               </InfoWindowF>
             )}
+
+            {directions && <DirectionsRenderer directions={directions} />}
           </GoogleMap>
       </div>
     </div>
