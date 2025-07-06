@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { GoogleMap, LoadScript, MarkerF } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { getMapBounds, setMapBounds } from "@/services/mapConfigService";
-import type { MapBounds } from "@/types";
+import { getMapCorners, setMapCorners } from "@/services/mapConfigService";
+import type { MapCorners } from "@/types";
 import { Loader2 } from "lucide-react";
 
 const mapContainerStyle = {
@@ -17,40 +17,33 @@ const mapContainerStyle = {
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const LPU_COORDS = { lat: 31.2550, lng: 75.7056 };
 
-type Corners = {
-  nw: { lat: number; lng: number };
-  ne: { lat: number; lng: number };
-  sw: { lat: number; lng: number };
-  se: { lat: number; lng: number };
-};
-
 export function AdminMapConfig() {
   const { toast } = useToast();
-  const [corners, setCorners] = useState<Corners | null>(null);
+  const [corners, setCorners] = useState<MapCorners | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    async function fetchBounds() {
+    async function fetchCorners() {
       setIsLoading(true);
       try {
-        const existingBounds = await getMapBounds();
-        const initialBounds = existingBounds || { north: 31.2650, south: 31.2450, east: 75.7156, west: 75.6956 };
-        setCorners({
-          nw: { lat: initialBounds.north, lng: initialBounds.west },
-          ne: { lat: initialBounds.north, lng: initialBounds.east },
-          sw: { lat: initialBounds.south, lng: initialBounds.west },
-          se: { lat: initialBounds.south, lng: initialBounds.east },
-        });
+        const existingCorners = await getMapCorners();
+        const initialCorners = existingCorners || {
+          nw: { lat: 31.260, lng: 75.700 },
+          ne: { lat: 31.260, lng: 75.710 },
+          sw: { lat: 31.250, lng: 75.700 },
+          se: { lat: 31.250, lng: 75.710 },
+        };
+        setCorners(initialCorners);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load map boundaries.", variant: "destructive" });
       }
       setIsLoading(false);
     }
-    fetchBounds();
+    fetchCorners();
   }, [toast]);
 
-  const handleMarkerDrag = (corner: keyof Corners, e: google.maps.MapMouseEvent) => {
+  const handleMarkerDrag = (corner: keyof MapCorners, e: google.maps.MapMouseEvent) => {
     if (e.latLng && corners) {
       setCorners(prevCorners => ({
         ...prevCorners!,
@@ -63,17 +56,7 @@ export function AdminMapConfig() {
     if (!corners) return;
     setIsSaving(true);
     
-    const lats = [corners.nw.lat, corners.ne.lat, corners.sw.lat, corners.se.lat];
-    const lngs = [corners.nw.lng, corners.ne.lng, corners.sw.lng, corners.se.lng];
-    
-    const newBounds: MapBounds = {
-      north: Math.max(...lats),
-      south: Math.min(...lats),
-      east: Math.max(...lngs),
-      west: Math.min(...lngs),
-    };
-    
-    const result = await setMapBounds(newBounds);
+    const result = await setMapCorners(corners);
     if (result.success) {
       toast({ title: "Success", description: "Map boundaries saved successfully." });
     } else {
@@ -81,18 +64,6 @@ export function AdminMapConfig() {
     }
     setIsSaving(false);
   };
-
-  const displayBounds = useMemo(() => {
-    if (!corners) return { north: 0, south: 0, east: 0, west: 0 };
-    const lats = [corners.nw.lat, corners.ne.lat, corners.sw.lat, corners.se.lat];
-    const lngs = [corners.nw.lng, corners.ne.lng, corners.sw.lng, corners.se.lng];
-    return {
-      north: Math.max(...lats),
-      south: Math.min(...lats),
-      east: Math.max(...lngs),
-      west: Math.min(...lngs),
-    };
-  }, [corners]);
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -103,7 +74,7 @@ export function AdminMapConfig() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Drag the four corner markers to define the map area. The system will use the outermost points as the boundary.
+        Drag the four corner markers to define the campus area. The map will show a polygon of this shape, and only markers inside it will be visible.
       </p>
       <div style={mapContainerStyle} className="relative">
         <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} id="admin-map-bounds-script">
@@ -138,12 +109,6 @@ export function AdminMapConfig() {
             />
           </GoogleMap>
         </LoadScript>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-xs">
-         <div className="p-2 bg-muted rounded">North: {displayBounds.north.toFixed(6)}</div>
-         <div className="p-2 bg-muted rounded">West: {displayBounds.west.toFixed(6)}</div>
-         <div className="p-2 bg-muted rounded">South: {displayBounds.south.toFixed(6)}</div>
-         <div className="p-2 bg-muted rounded">East: {displayBounds.east.toFixed(6)}</div>
       </div>
       <Button onClick={handleSave} disabled={isSaving}>
         {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

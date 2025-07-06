@@ -10,7 +10,7 @@ export type ScheduleSession = {
 };
 
 export type MapLocation = {
-  id: string;
+  id:string;
   name: string;
   description: string;
   icon: string;
@@ -20,9 +20,9 @@ export type MapLocation = {
   };
 };
 
-export type MapBounds = {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
+export type MapCorners = {
+  nw: { lat: number; lng: number };
+  ne: { lat: number; lng: number };
+  sw: { lat: number; lng: number };
+  se: { lat: number; lng: number };
 };

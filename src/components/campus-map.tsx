@@ -1,9 +1,9 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { GoogleMap, LoadScript, MarkerF, InfoWindowF } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, MarkerF, InfoWindowF, Polygon } from "@react-google-maps/api";
 import { getLocations } from "@/services/locationService";
-import type { MapLocation, MapBounds } from "@/types";
+import type { MapLocation, MapCorners } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, Loader2, Search, BedDouble, Utensils, Library, Building2, School, Landmark } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -44,7 +44,21 @@ const iconMap: { [key: string]: React.ElementType } = {
 
 const availableIcons = Object.keys(iconMap);
 
-export function CampusMap({ initialBounds }: { initialBounds: MapBounds | null }) {
+function isPointInPolygon(point: { lat: number, lng: number }, polygon: { lat: number, lng: number }[]): boolean {
+  let isInside = false;
+  const n = polygon.length;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = polygon[i].lng, yi = polygon[i].lat;
+    const xj = polygon[j].lng, yj = polygon[j].lat;
+    
+    const intersect = ((yi > point.lat) !== (yj > point.lat))
+        && (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+    if (intersect) isInside = !isInside;
+  }
+  return isInside;
+}
+
+export function CampusMap({ initialCorners }: { initialCorners: MapCorners | null }) {
   const [locations, setLocations] = useState<MapLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
@@ -53,12 +67,29 @@ export function CampusMap({ initialBounds }: { initialBounds: MapBounds | null }
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  
+  const polygonPath = useMemo(() => {
+    if (!initialCorners) return [];
+    return [initialCorners.nw, initialCorners.sw, initialCorners.se, initialCorners.ne];
+  }, [initialCorners]);
+
+  const mapRestrictionBounds = useMemo(() => {
+    if (!initialCorners) return null;
+    const lats = Object.values(initialCorners).map(c => c.lat);
+    const lngs = Object.values(initialCorners).map(c => c.lng);
+    return {
+      north: Math.max(...lats),
+      south: Math.min(...lats),
+      east: Math.max(...lngs),
+      west: Math.min(...lngs),
+    };
+  }, [initialCorners]);
 
   const mapOptions = useMemo(() => ({
     disableDefaultUI: true,
     zoomControl: true,
-    restriction: initialBounds ? {
-      latLngBounds: initialBounds,
+    restriction: mapRestrictionBounds ? {
+      latLngBounds: mapRestrictionBounds,
       strictBounds: false,
     } : {
       latLngBounds: {
@@ -71,7 +102,7 @@ export function CampusMap({ initialBounds }: { initialBounds: MapBounds | null }
     },
     minZoom: 15,
     maxZoom: 18,
-  }), [initialBounds]);
+  }), [mapRestrictionBounds]);
 
 
   const handleMapLoad = (map: google.maps.Map) => {
@@ -99,31 +130,23 @@ export function CampusMap({ initialBounds }: { initialBounds: MapBounds | null }
 
   const filteredLocations = useMemo(() => {
     return locations.filter(loc => {
-      // Bounds check
-      if (initialBounds) {
-        if (
-          loc.position.lat > initialBounds.north ||
-          loc.position.lat < initialBounds.south ||
-          loc.position.lng > initialBounds.east ||
-          loc.position.lng < initialBounds.west
-        ) {
+      if (polygonPath.length > 0) {
+        if (!isPointInPolygon(loc.position, polygonPath)) {
           return false;
         }
       }
       
-      // Filter check
       if (activeFilters.length > 0 && !activeFilters.includes(loc.icon)) {
         return false;
       }
       
-      // Search term check
       if (searchTerm.trim() !== "" && !loc.name.toLowerCase().includes(searchTerm.toLowerCase())) {
         return false;
       }
       
       return true;
     });
-  }, [locations, searchTerm, activeFilters, initialBounds]);
+  }, [locations, searchTerm, activeFilters, polygonPath]);
 
   useEffect(() => {
     if (focusedVenueName && locations.length > 0) {
@@ -166,20 +189,16 @@ export function CampusMap({ initialBounds }: { initialBounds: MapBounds | null }
         });
         mapRef.current.fitBounds(bounds);
     } else {
-        // Default view when no filters/search
-        if(mapRef.current) {
-            mapRef.current.panTo(LPU_COORDS);
-            const listener = google.maps.event.addListenerOnce(mapRef.current, 'idle', () => {
-              if (mapRef.current?.getZoom() !== 16) mapRef.current?.setZoom(16);
-            });
-            // Cleanup listener
-            return () => {
-              google.maps.event.removeListener(listener);
-            };
+        if(mapRef.current && mapRestrictionBounds) {
+            const bounds = new window.google.maps.LatLngBounds(
+                { lat: mapRestrictionBounds.south, lng: mapRestrictionBounds.west },
+                { lat: mapRestrictionBounds.north, lng: mapRestrictionBounds.east }
+            );
+            mapRef.current.fitBounds(bounds);
         }
     }
 
-  }, [filteredLocations, locations.length, searchTerm, activeFilters]);
+  }, [filteredLocations, locations.length, searchTerm, activeFilters, mapRestrictionBounds]);
 
 
   const handleInfoWindowClose = () => {
@@ -250,6 +269,24 @@ export function CampusMap({ initialBounds }: { initialBounds: MapBounds | null }
             onLoad={handleMapLoad}
             onClick={() => setSelectedLocation(null)}
           >
+            {polygonPath.length > 0 && (
+              <Polygon
+                paths={polygonPath}
+                options={{
+                  fillColor: "hsl(var(--primary))",
+                  fillOpacity: 0.1,
+                  strokeColor: "hsl(var(--primary))",
+                  strokeOpacity: 0.8,
+                  strokeWeight: 2,
+                  clickable: false,
+                  draggable: false,
+                  editable: false,
+                  geodesic: false,
+                  zIndex: 1,
+                }}
+              />
+            )}
+
             {!isLoading && filteredLocations.map(loc => (
               <MarkerF
                 key={loc.id}

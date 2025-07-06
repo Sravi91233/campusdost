@@ -8,11 +8,11 @@ import { CampusDiscoveryChallenge } from "@/components/campus-discovery-challeng
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Map, MessageCircle, Users, FileText, CalendarDays, Trophy } from "lucide-react";
 import { getSchedule } from "@/services/scheduleService";
-import { getMapBounds } from "@/services/mapConfigService";
+import { getMapCorners } from "@/services/mapConfigService";
 
 export default async function DashboardPage() {
   const scheduleData = await getSchedule();
-  const mapBounds = await getMapBounds();
+  const mapCorners = await getMapCorners();
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
@@ -31,7 +31,7 @@ export default async function DashboardPage() {
             <CardTitle className="flex items-center gap-3 text-2xl font-headline"><Map className="text-primary h-6 w-6"/> Interactive Campus Map</CardTitle>
           </CardHeader>
           <CardContent>
-            <CampusMap initialBounds={mapBounds} />
+            <CampusMap initialCorners={mapCorners} />
           </CardContent>
         </Card>
 
