@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { GoogleMap, useJsApiLoader, InfoWindowF, DirectionsRenderer, useMap } from "@react-google-maps/api";
+import { GoogleMap, useJsApiLoader, InfoWindowF, DirectionsRenderer } from "@react-google-maps/api";
 import { getLocations } from "@/services/locationService";
 import type { MapLocation } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -9,48 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as LucideIcons from "lucide-react";
 import { Loader2 } from "lucide-react";
-
-// Custom wrapper for the new AdvancedMarkerElement
-const AdvancedMarker = (props: google.maps.marker.AdvancedMarkerElementOptions & { onClick?: () => void }) => {
-  const map = useMap();
-  const [marker, setMarker] = useState<google.maps.marker.AdvancedMarkerElement>();
-  const markerRef = React.useRef<google.maps.marker.AdvancedMarkerElement>();
-
-  useEffect(() => {
-    if (!map || !google.maps.marker) return;
-    
-    markerRef.current = new google.maps.marker.AdvancedMarkerElement({
-      map,
-      position: props.position,
-      title: props.title,
-    });
-    setMarker(markerRef.current);
-    
-    return () => {
-      if (markerRef.current) {
-        markerRef.current.map = null;
-      }
-    };
-  }, [map]);
-
-  useEffect(() => {
-    if (!marker) return;
-    marker.position = props.position;
-    marker.title = props.title;
-  }, [marker, props.position, props.title]);
-
-  useEffect(() => {
-    if (!marker) return;
-    if (props.onClick) {
-      const listener = marker.addListener('gmp-click', props.onClick);
-      return () => {
-        listener.remove();
-      };
-    }
-  }, [marker, props.onClick]);
-
-  return null;
-}
 
 const mapContainerStyle = {
   width: '100%',
@@ -101,6 +59,7 @@ DynamicIcon.displayName = "DynamicIcon";
 
 export function CampusMap() {
   const { toast } = useToast();
+  const [map, setMap] = useState<google.maps.Map | null>(null);
   const [locations, setLocations] = useState<MapLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeLocation, setActiveLocation] = useState<MapLocation | null>(null);
@@ -190,6 +149,48 @@ export function CampusMap() {
     );
   }, [toast]);
 
+  const onLoad = useCallback((mapInstance: google.maps.Map) => {
+    setMap(mapInstance);
+  }, []);
+
+  const onUnmount = useCallback(() => {
+    setMap(null);
+  }, []);
+  
+  useEffect(() => {
+    if (!map) return;
+  
+    const markers: google.maps.marker.AdvancedMarkerElement[] = [];
+  
+    // Create location markers
+    locations.forEach(loc => {
+      const marker = new google.maps.marker.AdvancedMarkerElement({
+        position: loc.position,
+        map,
+        title: loc.name,
+      });
+      marker.addListener('gmp-click', () => handleMarkerClick(loc));
+      markers.push(marker);
+    });
+  
+    // Create user location marker
+    if (currentUserLocation) {
+      const userMarker = new google.maps.marker.AdvancedMarkerElement({
+        position: currentUserLocation,
+        map,
+        title: "Your Location",
+      });
+      markers.push(userMarker);
+    }
+  
+    // Cleanup function to remove markers
+    return () => {
+      markers.forEach(marker => {
+        marker.map = null;
+      });
+    };
+  }, [map, locations, currentUserLocation, handleMarkerClick]);
+
   if (loadError) {
     return <div className="text-destructive-foreground bg-destructive p-4 rounded-md">Error loading map. Please check your API key and network connection.</div>;
   }
@@ -209,18 +210,10 @@ export function CampusMap() {
         center={mapCenter}
         zoom={16}
         options={mapOptions}
+        onLoad={onLoad}
+        onUnmount={onUnmount}
       >
-        {!isLoading && locations.map((loc) => (
-          <AdvancedMarker
-            key={loc.id}
-            position={loc.position}
-            onClick={() => handleMarkerClick(loc)}
-            title={loc.name}
-          />
-        ))}
-
-        {currentUserLocation && <AdvancedMarker position={currentUserLocation} title="Your Location" />}
-
+        {/* Markers are now managed by useEffect, no longer rendered as children */}
         {activeLocation && (
           <InfoWindowF
             position={activeLocation.position}
