@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { GoogleMap, useJsApiLoader, InfoWindowF, DirectionsRenderer } from "@react-google-maps/api";
+import { GoogleMap, useJsApiLoader, InfoWindowF, DirectionsRenderer, MarkerF } from "@react-google-maps/api";
 import { getLocations } from "@/services/locationService";
 import type { MapLocation } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -17,14 +17,11 @@ const mapContainerStyle = {
   borderRadius: '0.5rem',
 };
 
-const libraries = ['places', 'marker'] as const;
+const libraries = ['places'] as const;
 
-// When using a mapId, styles are configured in the Google Cloud Console.
-// See: https://developers.google.com/maps/documentation/javascript/styling#cloud_tooling
 const mapOptions = {
   disableDefaultUI: true,
   zoomControl: true,
-  mapId: "campus_map" // Required for Advanced Markers
 };
 
 
@@ -39,12 +36,10 @@ DynamicIcon.displayName = "DynamicIcon";
 
 export function CampusMap() {
   const { toast } = useToast();
-  const [map, setMap] = useState<google.maps.Map | null>(null);
   const [locations, setLocations] = useState<MapLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeLocation, setActiveLocation] = useState<MapLocation | null>(null);
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
-  const [currentUserLocation, setCurrentUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const [isRouting, setIsRouting] = useState(false);
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -82,6 +77,7 @@ export function CampusMap() {
 
   const handleMarkerClick = useCallback((location: MapLocation) => {
     setActiveLocation(location);
+    setDirections(null);
   }, []);
 
   const handleInfoWindowClose = useCallback(() => {
@@ -103,7 +99,6 @@ export function CampusMap() {
           lat: position.coords.latitude,
           lng: position.coords.longitude
         };
-        setCurrentUserLocation(origin);
 
         const directionsService = new window.google.maps.DirectionsService();
         directionsService.route(
@@ -128,49 +123,7 @@ export function CampusMap() {
       }
     );
   }, [toast]);
-
-  const onLoad = useCallback((mapInstance: google.maps.Map) => {
-    setMap(mapInstance);
-  }, []);
-
-  const onUnmount = useCallback(() => {
-    setMap(null);
-  }, []);
   
-  useEffect(() => {
-    if (!map) return;
-  
-    const markers: google.maps.marker.AdvancedMarkerElement[] = [];
-  
-    // Create location markers
-    locations.forEach(loc => {
-      const marker = new google.maps.marker.AdvancedMarkerElement({
-        position: loc.position,
-        map,
-        title: loc.name,
-      });
-      marker.addListener('gmp-click', () => handleMarkerClick(loc));
-      markers.push(marker);
-    });
-  
-    // Create user location marker
-    if (currentUserLocation) {
-      const userMarker = new google.maps.marker.AdvancedMarkerElement({
-        position: currentUserLocation,
-        map,
-        title: "Your Location",
-      });
-      markers.push(userMarker);
-    }
-  
-    // Cleanup function to remove markers
-    return () => {
-      markers.forEach(marker => {
-        marker.map = null;
-      });
-    };
-  }, [map, locations, currentUserLocation, handleMarkerClick]);
-
   if (loadError) {
     return <div className="text-destructive-foreground bg-destructive p-4 rounded-md">Error loading map. Please check your API key and network connection.</div>;
   }
@@ -190,10 +143,15 @@ export function CampusMap() {
         center={mapCenter}
         zoom={16}
         options={mapOptions}
-        onLoad={onLoad}
-        onUnmount={onUnmount}
       >
-        {/* Markers are now managed by useEffect, no longer rendered as children */}
+        {!isLoading && locations.map(loc => (
+          <MarkerF
+            key={loc.id}
+            position={loc.position}
+            onClick={() => handleMarkerClick(loc)}
+          />
+        ))}
+
         {activeLocation && (
           <InfoWindowF
             position={activeLocation.position}
