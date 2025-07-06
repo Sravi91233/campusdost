@@ -203,7 +203,7 @@ export function CampusMap() {
             {availableIcons.map(iconName => {
                 const IconComponent = iconMap[iconName];
                 return (
-                    <ToggleGroupItem key={iconName} value={iconName} aria-label={iconName} className="m-1 sm:m-0">
+                    <ToggleGroupItem key={iconName} value={iconName} aria-label={iconName}>
                         <IconComponent className="h-4 w-4" />
                     </ToggleGroupItem>
                 )
