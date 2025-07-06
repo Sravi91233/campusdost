@@ -72,7 +72,7 @@ export function AdminMapManager() {
       name: "",
       description: "",
       icon: "Landmark",
-      position: { lat: 0, lng: 0 },
+      position: { lat: 31.2550, lng: 75.7056 },
     },
   });
 
@@ -91,7 +91,7 @@ export function AdminMapManager() {
       form.reset(editingLocation);
     } else {
       form.reset({
-        name: "", description: "", icon: "Landmark", position: { lat: 0, lng: 0 },
+        name: "", description: "", icon: "Landmark", position: { lat: 31.2550, lng: 75.7056 },
       });
     }
   }, [editingLocation, form]);
@@ -163,14 +163,14 @@ export function AdminMapManager() {
                  <FormField control={form.control} name="position.lat" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Latitude</FormLabel>
-                    <FormControl><Input type="number" step="any" placeholder="e.g. 40.7128" {...field} /></FormControl>
+                    <FormControl><Input type="number" step="any" placeholder="e.g. 31.2550" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="position.lng" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Longitude</FormLabel>
-                    <FormControl><Input type="number" step="any" placeholder="e.g. -74.0060" {...field} /></FormControl>
+                    <FormControl><Input type="number" step="any" placeholder="e.g. 75.7056" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

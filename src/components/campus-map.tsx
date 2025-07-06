@@ -79,7 +79,7 @@ export function CampusMap() {
     if (locations.length > 0) {
       return locations[0].position;
     }
-    return { lat: 34.0522, lng: -118.2437 }; // Default to downtown LA if no locations
+    return { lat: 31.2550, lng: 75.7056 }; // Default to LPU campus if no locations
   }, [locations]);
 
   const handleMarkerClick = useCallback((id: string) => {
