@@ -1,15 +1,14 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { GoogleMap, useJsApiLoader, InfoWindowF, DirectionsRenderer, MarkerF } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, InfoWindowF, DirectionsRenderer, MarkerF } from "@react-google-maps/api";
 import { getLocations } from "@/services/locationService";
 import type { MapLocation } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as LucideIcons from "lucide-react";
-import { Loader2, AlertTriangle, Info } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, AlertTriangle } from "lucide-react";
 
 
 const mapContainerStyle = {
@@ -44,13 +43,6 @@ export function CampusMap() {
   const [activeLocation, setActiveLocation] = useState<MapLocation | null>(null);
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
   const [isRouting, setIsRouting] = useState(false);
-  const [tilesLoaded, setTilesLoaded] = useState(false);
-
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    libraries: libraries,
-  });
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -144,87 +136,66 @@ export function CampusMap() {
     );
   }
   
-  if (loadError) {
-    return <div className="text-destructive-foreground bg-destructive p-4 rounded-md">Error loading map. Please check your API key settings in the Google Cloud Console.</div>;
-  }
-  if (!isLoaded) {
-    return <Skeleton style={mapContainerStyle} />;
-  }
-
   return (
     <div className="w-full h-full relative" style={mapContainerStyle}>
-       {isLoading && (
-        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      )}
-      <GoogleMap
-        mapContainerStyle={{ width: '100%', height: '100%' }}
-        center={mapCenter}
-        zoom={16}
-        options={mapOptions}
-        onTilesLoaded={() => setTilesLoaded(true)}
+      <LoadScript
+        googleMapsApiKey={GOOGLE_MAPS_API_KEY}
+        libraries={libraries}
+        loadingElement={<Skeleton style={mapContainerStyle} />}
+        id="google-map-script-loader"
       >
-        {!isLoading && locations.map(loc => (
-          <MarkerF
-            key={loc.id}
-            position={loc.position}
-            onClick={() => handleMarkerClick(loc)}
-          />
-        ))}
+        {isLoading && (
+          <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
+        <GoogleMap
+          mapContainerStyle={{ width: '100%', height: '100%' }}
+          center={mapCenter}
+          zoom={16}
+          options={mapOptions}
+        >
+          {!isLoading && locations.map(loc => (
+            <MarkerF
+              key={loc.id}
+              position={loc.position}
+              onClick={() => handleMarkerClick(loc)}
+            />
+          ))}
 
-        {activeLocation && (
-          <InfoWindowF
-            position={activeLocation.position}
-            onCloseClick={handleInfoWindowClose}
-          >
-            <div className="space-y-2 p-1 max-w-xs">
-              <div className="flex items-center gap-2">
-                <DynamicIcon name={activeLocation.icon} className="h-5 w-5 text-primary" />
-                <h3 className="font-bold text-md text-primary">{activeLocation.name}</h3>
+          {activeLocation && (
+            <InfoWindowF
+              position={activeLocation.position}
+              onCloseClick={handleInfoWindowClose}
+            >
+              <div className="space-y-2 p-1 max-w-xs">
+                <div className="flex items-center gap-2">
+                  <DynamicIcon name={activeLocation.icon} className="h-5 w-5 text-primary" />
+                  <h3 className="font-bold text-md text-primary">{activeLocation.name}</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">{activeLocation.description}</p>
+                <Button size="sm" className="w-full" onClick={() => handleGetDirections(activeLocation.position)} disabled={isRouting}>
+                  {isRouting ? "Getting Route..." : "Get Directions"}
+                </Button>
               </div>
-              <p className="text-sm text-muted-foreground">{activeLocation.description}</p>
-              <Button size="sm" className="w-full" onClick={() => handleGetDirections(activeLocation.position)} disabled={isRouting}>
-                {isRouting ? "Getting Route..." : "Get Directions"}
-              </Button>
-            </div>
-          </InfoWindowF>
-        )}
+            </InfoWindowF>
+          )}
 
-        {directions && (
-          <DirectionsRenderer
-            directions={directions}
-            options={{
-              suppressMarkers: true,
-              polylineOptions: {
-                strokeColor: 'hsl(var(--primary))',
-                strokeWeight: 5,
-                strokeOpacity: 0.8,
-              },
-            }}
-          />
-        )}
-      </GoogleMap>
-      {isLoaded && !tilesLoaded && !isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20 p-4">
-          <Alert variant="default" className="max-w-md shadow-lg">
-            <Info className="h-4 w-4" />
-            <AlertTitle>Is the map blank?</AlertTitle>
-            <AlertDescription>
-              The Google Maps API has loaded, but the map tiles are not showing. This is usually due to a configuration issue. Please verify that:
-              <ul className="list-disc pl-5 mt-2 space-y-1">
-                <li><b>Billing is enabled</b> on your Google Cloud project.</li>
-                <li>Your <b>API key restrictions</b> in Google Cloud match your website's URL.</li>
-              </ul>
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-      {!isLoading && locations.length === 0 && (
-         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background p-3 rounded-lg shadow-lg text-sm text-muted-foreground z-10">
-           No locations found. Add some in the admin panel!
-         </div>
-      )}
+          {directions && (
+            <DirectionsRenderer
+              directions={directions}
+              options={{
+                suppressMarkers: true,
+                polylineOptions: {
+                  strokeColor: 'hsl(var(--primary))',
+                  strokeWeight: 5,
+                  strokeOpacity: 0.8,
+                },
+              }}
+            />
+          )}
+        </GoogleMap>
+      </LoadScript>
     </div>
   );
 }
