@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { GoogleMap, LoadScript, MarkerF, InfoWindowF } from "@react-google-maps/api";
 import { getLocations } from "@/services/locationService";
-import type { MapLocation } from "@/types";
+import type { MapLocation, MapBounds } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, Loader2, Search, BedDouble, Utensils, Library, Building2, School, Landmark } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -21,22 +21,6 @@ const libraries = ['places'] as const;
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 const LPU_COORDS = { lat: 31.2550, lng: 75.7056 };
-
-const mapOptions = {
-  disableDefaultUI: true,
-  zoomControl: true,
-  restriction: {
-    latLngBounds: {
-      north: 31.2650,
-      south: 31.2450,
-      west: 75.6956,
-      east: 75.7156,
-    },
-    strictBounds: false,
-  },
-  minZoom: 15,
-  maxZoom: 18,
-};
 
 const getMarkerIcon = (iconName: string): string => {
   const baseUrl = "http://maps.google.com/mapfiles/ms/icons/";
@@ -60,7 +44,7 @@ const iconMap: { [key: string]: React.ElementType } = {
 
 const availableIcons = Object.keys(iconMap);
 
-export function CampusMap() {
+export function CampusMap({ initialBounds }: { initialBounds: MapBounds | null }) {
   const [locations, setLocations] = useState<MapLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
@@ -69,6 +53,26 @@ export function CampusMap() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+
+  const mapOptions = useMemo(() => ({
+    disableDefaultUI: true,
+    zoomControl: true,
+    restriction: initialBounds ? {
+      latLngBounds: initialBounds,
+      strictBounds: false,
+    } : {
+      latLngBounds: {
+        north: 31.2650,
+        south: 31.2450,
+        west: 75.6956,
+        east: 75.7156,
+      },
+      strictBounds: false,
+    },
+    minZoom: 15,
+    maxZoom: 18,
+  }), [initialBounds]);
+
 
   const handleMapLoad = (map: google.maps.Map) => {
     mapRef.current = map;
@@ -109,57 +113,61 @@ export function CampusMap() {
       });
   }, [locations, searchTerm, activeFilters]);
 
-  // Effect to handle focusing on a venue from an external component like the Schedule
   useEffect(() => {
     if (focusedVenueName && locations.length > 0) {
       const venueLocation = locations.find(loc => loc.name === focusedVenueName);
       if (venueLocation) {
-        // By setting the search term, we trigger the filteredLocations memo.
-        // The fitBounds effect will then handle the map view automatically.
         setSearchTerm(venueLocation.name);
-        setActiveFilters([]); // Clear filters to ensure the searched location is visible
-        setSelectedLocation(venueLocation); // Open the info window for the focused location
+        setActiveFilters([]); 
+        setSelectedLocation(venueLocation);
       }
-      // Important: clear the focus context so this doesn't interfere with user interaction later.
-      // This allows the user to clear the search and see all locations again.
       setFocusedVenueName(null);
     }
   }, [focusedVenueName, locations, setFocusedVenueName]);
 
 
-  // Effect to automatically adjust map bounds based on filtered locations
   useEffect(() => {
     if (!mapRef.current || locations.length === 0) {
-      return; // Map not ready or no locations loaded yet
+      return; 
     }
 
-    // If an info window is open but its marker is filtered out, close the window.
     if (selectedLocation && !filteredLocations.find(l => l.id === selectedLocation.id)) {
         setSelectedLocation(null);
     }
     
-    if (filteredLocations.length === 0) {
-      // If no locations match filters, reset to the default campus view
+    if (filteredLocations.length === 0 && (searchTerm || activeFilters.length > 0)) {
       mapRef.current.panTo(LPU_COORDS);
       mapRef.current.setZoom(16);
       return;
     }
     
     if (filteredLocations.length === 1) {
-      // If only one location, pan to it with a close-up zoom.
       mapRef.current.panTo(filteredLocations[0].position);
       mapRef.current.setZoom(17);
       return;
     }
+    
+    if (filteredLocations.length > 1) {
+        const bounds = new window.google.maps.LatLngBounds();
+        filteredLocations.forEach(loc => {
+            bounds.extend(loc.position);
+        });
+        mapRef.current.fitBounds(bounds);
+    } else {
+        // Default view when no filters/search
+        if(mapRef.current) {
+            mapRef.current.panTo(LPU_COORDS);
+            const listener = google.maps.event.addListenerOnce(mapRef.current, 'idle', () => {
+              if (mapRef.current?.getZoom() !== 16) mapRef.current?.setZoom(16);
+            });
+            // Cleanup listener
+            return () => {
+              google.maps.event.removeListener(listener);
+            };
+        }
+    }
 
-    // If multiple locations, create bounds and fit them on the map.
-    const bounds = new window.google.maps.LatLngBounds();
-    filteredLocations.forEach(loc => {
-        bounds.extend(loc.position);
-    });
-    mapRef.current.fitBounds(bounds);
-
-  }, [filteredLocations, locations.length]); // Re-run this logic whenever filtered locations change
+  }, [filteredLocations, locations.length, searchTerm, activeFilters]);
 
 
   const handleInfoWindowClose = () => {

@@ -1,7 +1,8 @@
 import { ScheduleManager } from "@/components/admin-schedule-manager";
 import { AdminMapManager } from "@/components/admin-map-manager";
+import { AdminMapConfig } from "@/components/admin-map-config";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { CalendarDays, MapPin } from "lucide-react";
+import { CalendarDays, MapPin, BoundingBox } from "lucide-react";
 
 export default function AdminPage() {
   return (
@@ -31,6 +32,20 @@ export default function AdminPage() {
         </CardHeader>
         <CardContent>
           <AdminMapManager />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3 text-2xl font-headline">
+            <BoundingBox className="text-primary h-6 w-6" /> Configure Map Boundaries
+          </CardTitle>
+          <CardDescription>
+            Set the draggable boundaries for the campus map to control the visible area for users.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AdminMapConfig />
         </CardContent>
       </Card>
     </div>

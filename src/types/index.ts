@@ -19,3 +19,10 @@ export type MapLocation = {
     lng: number;
   };
 };
+
+export type MapBounds = {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+};
