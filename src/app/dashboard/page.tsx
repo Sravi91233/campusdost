@@ -1,3 +1,4 @@
+
 import { CampusMap } from "@/components/campus-map";
 import { Chatbot } from "@/components/chatbot";
 import { Schedule } from "@/components/schedule";
@@ -51,7 +52,7 @@ export default function DashboardPage() {
         <Card className="shadow-sm hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-3 text-xl font-headline"><FileText className="text-primary h-5 w-5"/> Session Feedback</CardTitle>
-          </Header>
+          </CardHeader>
           <CardContent>
             <FeedbackForm />
           </CardContent>
