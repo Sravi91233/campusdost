@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF, DirectionsRenderer } from "@react-google-maps/api";
+import { GoogleMap, useJsApiLoader, InfoWindowF, DirectionsRenderer, useMap } from "@react-google-maps/api";
 import { getLocations } from "@/services/locationService";
 import type { MapLocation } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,48 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as LucideIcons from "lucide-react";
 import { Loader2 } from "lucide-react";
+
+// Custom wrapper for the new AdvancedMarkerElement
+const AdvancedMarker = (props: google.maps.marker.AdvancedMarkerElementOptions & { onClick?: () => void }) => {
+  const map = useMap();
+  const [marker, setMarker] = useState<google.maps.marker.AdvancedMarkerElement>();
+  const markerRef = React.useRef<google.maps.marker.AdvancedMarkerElement>();
+
+  useEffect(() => {
+    if (!map || !google.maps.marker) return;
+    
+    markerRef.current = new google.maps.marker.AdvancedMarkerElement({
+      map,
+      position: props.position,
+      title: props.title,
+    });
+    setMarker(markerRef.current);
+    
+    return () => {
+      if (markerRef.current) {
+        markerRef.current.map = null;
+      }
+    };
+  }, [map]);
+
+  useEffect(() => {
+    if (!marker) return;
+    marker.position = props.position;
+    marker.title = props.title;
+  }, [marker, props.position, props.title]);
+
+  useEffect(() => {
+    if (!marker) return;
+    if (props.onClick) {
+      const listener = marker.addListener('gmp-click', props.onClick);
+      return () => {
+        listener.remove();
+      };
+    }
+  }, [marker, props.onClick]);
+
+  return null;
+}
 
 const mapContainerStyle = {
   width: '100%',
@@ -44,6 +86,7 @@ const mapOptions = {
   ],
   disableDefaultUI: true,
   zoomControl: true,
+  mapId: "campus_map" // Required for Advanced Markers
 };
 
 
@@ -60,7 +103,7 @@ export function CampusMap() {
   const { toast } = useToast();
   const [locations, setLocations] = useState<MapLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeMarker, setActiveMarker] = useState<string | null>(null);
+  const [activeLocation, setActiveLocation] = useState<MapLocation | null>(null);
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
   const [currentUserLocation, setCurrentUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const [isRouting, setIsRouting] = useState(false);
@@ -98,8 +141,12 @@ export function CampusMap() {
     return { lat: 31.2550, lng: 75.7056 }; // Default to LPU campus if no locations
   }, [locations]);
 
-  const handleMarkerClick = useCallback((id: string) => {
-    setActiveMarker(id);
+  const handleMarkerClick = useCallback((location: MapLocation) => {
+    setActiveLocation(location);
+  }, []);
+
+  const handleInfoWindowClose = useCallback(() => {
+    setActiveLocation(null);
   }, []);
 
   const handleGetDirections = useCallback((destination: { lat: number, lng: number }) => {
@@ -164,33 +211,33 @@ export function CampusMap() {
         options={mapOptions}
       >
         {!isLoading && locations.map((loc) => (
-          <MarkerF
+          <AdvancedMarker
             key={loc.id}
             position={loc.position}
-            onClick={() => handleMarkerClick(loc.id)}
+            onClick={() => handleMarkerClick(loc)}
             title={loc.name}
-          >
-            {activeMarker === loc.id && (
-              <InfoWindowF
-                onCloseClick={() => setActiveMarker(null)}
-                position={loc.position}
-              >
-                <div className="space-y-2 p-1 max-w-xs">
-                  <div className="flex items-center gap-2">
-                    <DynamicIcon name={loc.icon} className="h-5 w-5 text-primary" />
-                    <h3 className="font-bold text-md text-primary">{loc.name}</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{loc.description}</p>
-                  <Button size="sm" className="w-full" onClick={() => handleGetDirections(loc.position)} disabled={isRouting}>
-                    {isRouting ? "Getting Route..." : "Get Directions"}
-                  </Button>
-                </div>
-              </InfoWindowF>
-            )}
-          </MarkerF>
+          />
         ))}
 
-        {currentUserLocation && <MarkerF position={currentUserLocation} title="Your Location" />}
+        {currentUserLocation && <AdvancedMarker position={currentUserLocation} title="Your Location" />}
+
+        {activeLocation && (
+          <InfoWindowF
+            position={activeLocation.position}
+            onCloseClick={handleInfoWindowClose}
+          >
+            <div className="space-y-2 p-1 max-w-xs">
+              <div className="flex items-center gap-2">
+                <DynamicIcon name={activeLocation.icon} className="h-5 w-5 text-primary" />
+                <h3 className="font-bold text-md text-primary">{activeLocation.name}</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">{activeLocation.description}</p>
+              <Button size="sm" className="w-full" onClick={() => handleGetDirections(activeLocation.position)} disabled={isRouting}>
+                {isRouting ? "Getting Route..." : "Get Directions"}
+              </Button>
+            </div>
+          </InfoWindowF>
+        )}
 
         {directions && (
           <DirectionsRenderer
