@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react";
-import { GoogleMap, LoadScript, MarkerF } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, MarkerF, InfoWindowF } from "@react-google-maps/api";
 import { getLocations } from "@/services/locationService";
 import type { MapLocation } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,9 +35,28 @@ const mapOptions = {
   maxZoom: 18,
 };
 
+const getMarkerIcon = (iconName: string): string => {
+  const baseUrl = "http://maps.google.com/mapfiles/ms/icons/";
+  switch (iconName) {
+    case "BedDouble": // Hostels
+      return baseUrl + "blue-dot.png";
+    case "Utensils": // Food
+      return baseUrl + "orange-dot.png";
+    case "Library":
+    case "School":
+    case "Building2": // Academic
+      return baseUrl + "purple-dot.png";
+    case "Landmark":
+      return baseUrl + "green-dot.png"; // General
+    default:
+      return baseUrl + "red-dot.png"; // Default
+  }
+};
+
 export function CampusMap() {
   const [locations, setLocations] = useState<MapLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -60,7 +79,7 @@ export function CampusMap() {
 
   if (!GOOGLE_MAPS_API_KEY) {
     return (
-      <Alert variant="destructive" style={mapContainerStyle}>
+      <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Google Maps API Key is Missing</AlertTitle>
         <AlertDescription>
@@ -75,7 +94,7 @@ export function CampusMap() {
       <LoadScript
         googleMapsApiKey={GOOGLE_MAPS_API_KEY}
         libraries={libraries}
-        loadingElement={<Skeleton style={mapContainerStyle} />}
+        loadingElement={<Skeleton className="w-full h-full" />}
         id="google-map-script-loader"
       >
         {isLoading && (
@@ -88,13 +107,28 @@ export function CampusMap() {
           center={LPU_COORDS}
           zoom={16}
           options={mapOptions}
+          onClick={() => setSelectedLocation(null)}
         >
           {!isLoading && locations.map(loc => (
             <MarkerF
               key={loc.id}
               position={loc.position}
+              icon={getMarkerIcon(loc.icon)}
+              onClick={() => setSelectedLocation(loc)}
             />
           ))}
+
+          {selectedLocation && (
+            <InfoWindowF
+              position={selectedLocation.position}
+              onCloseClick={() => setSelectedLocation(null)}
+            >
+              <div className="p-1 max-w-xs">
+                <h3 className="font-bold text-md mb-1">{selectedLocation.name}</h3>
+                <p className="text-sm">{selectedLocation.description}</p>
+              </div>
+            </InfoWindowF>
+          )}
         </GoogleMap>
       </LoadScript>
     </div>

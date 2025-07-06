@@ -20,15 +20,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
         
-        {/* The Card wrapper has been temporarily removed for diagnostics */}
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+        <Card className="shadow-sm hover:shadow-md transition-shadow">
            <CardHeader>
             <CardTitle className="flex items-center gap-3 text-2xl font-headline"><Map className="text-primary h-6 w-6"/> Interactive Campus Map</CardTitle>
           </CardHeader>
           <CardContent>
             <CampusMap />
           </CardContent>
-        </div>
+        </Card>
 
       </div>
 
