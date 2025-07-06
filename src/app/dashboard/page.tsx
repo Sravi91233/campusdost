@@ -18,14 +18,17 @@ export default function DashboardPage() {
             <Schedule />
           </CardContent>
         </Card>
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader>
+        
+        {/* The Card wrapper has been temporarily removed for diagnostics */}
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+           <CardHeader>
             <CardTitle className="flex items-center gap-3 text-2xl font-headline"><Map className="text-primary h-6 w-6"/> Interactive Campus Map</CardTitle>
           </CardHeader>
           <CardContent>
             <CampusMap />
           </CardContent>
-        </Card>
+        </div>
+
       </div>
 
       <div className="space-y-8">
@@ -48,7 +51,7 @@ export default function DashboardPage() {
         <Card className="shadow-sm hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-3 text-xl font-headline"><FileText className="text-primary h-5 w-5"/> Session Feedback</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent>
             <FeedbackForm />
           </CardContent>

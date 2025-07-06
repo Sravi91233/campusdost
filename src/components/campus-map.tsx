@@ -1,20 +1,16 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { GoogleMap, LoadScript, InfoWindowF, DirectionsRenderer, MarkerF } from "@react-google-maps/api";
+import React, { useState, useEffect, useMemo } from "react";
+import { GoogleMap, LoadScript, MarkerF } from "@react-google-maps/api";
 import { getLocations } from "@/services/locationService";
 import type { MapLocation } from "@/types";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import * as LucideIcons from "lucide-react";
-import { Loader2, AlertTriangle } from "lucide-react";
-
+import { AlertTriangle, Loader2 } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const mapContainerStyle = {
   width: '100%',
-  height: '100%',
-  minHeight: '500px',
+  height: '500px', // Using a fixed height for diagnostics
   borderRadius: '0.5rem',
 };
 
@@ -26,23 +22,9 @@ const mapOptions = {
   zoomControl: true,
 };
 
-
-const DynamicIcon = React.memo(({ name, ...props }: { name: string } & LucideIcons.LucideProps) => {
-    const IconComponent = LucideIcons[name as keyof typeof LucideIcons] as React.ElementType;
-    if (!IconComponent) {
-      return <LucideIcons.MapPin {...props} />;
-    }
-    return <IconComponent {...props} />;
-});
-DynamicIcon.displayName = "DynamicIcon";
-
 export function CampusMap() {
-  const { toast } = useToast();
   const [locations, setLocations] = useState<MapLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeLocation, setActiveLocation] = useState<MapLocation | null>(null);
-  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
-  const [isRouting, setIsRouting] = useState(false);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -52,21 +34,16 @@ export function CampusMap() {
         setLocations(data);
       } catch (error) {
         console.error("Failed to fetch locations:", error);
-        toast({
-          variant: "destructive",
-          title: "Error Loading Map Pins",
-          description: "Could not load locations from the database. Please check Firestore rules.",
-        });
       } finally {
         setIsLoading(false);
       }
     };
-    if(GOOGLE_MAPS_API_KEY) {
+    if (GOOGLE_MAPS_API_KEY) {
       fetchLocations();
     } else {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   const mapCenter = useMemo(() => {
     if (locations.length > 0) {
@@ -75,69 +52,20 @@ export function CampusMap() {
     return { lat: 31.2550, lng: 75.7056 }; // Default to LPU campus
   }, [locations]);
 
-  const handleMarkerClick = useCallback((location: MapLocation) => {
-    setActiveLocation(location);
-    setDirections(null);
-  }, []);
-
-  const handleInfoWindowClose = useCallback(() => {
-    setActiveLocation(null);
-  }, []);
-
-  const handleGetDirections = useCallback((destination: { lat: number, lng: number }) => {
-    setIsRouting(true);
-    setDirections(null);
-    if (!navigator.geolocation) {
-      toast({ variant: "destructive", title: "Geolocation not supported", description: "Your browser does not support geolocation." });
-      setIsRouting(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const origin = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        };
-
-        const directionsService = new window.google.maps.DirectionsService();
-        directionsService.route(
-          {
-            origin,
-            destination,
-            travelMode: window.google.maps.TravelMode.WALKING,
-          },
-          (result, status) => {
-            if (status === window.google.maps.DirectionsStatus.OK) {
-              setDirections(result);
-            } else {
-              toast({ variant: "destructive", title: "Directions failed", description: "Could not find a route." });
-            }
-            setIsRouting(false);
-          }
-        );
-      },
-      () => {
-        toast({ variant: "destructive", title: "Geolocation failed", description: "Could not get your location. Please enable location services." });
-        setIsRouting(false);
-      }
-    );
-  }, [toast]);
-  
   if (!GOOGLE_MAPS_API_KEY) {
     return (
-      <div className="flex flex-col h-[500px] w-full items-center justify-center rounded-lg bg-destructive/10 text-center border border-destructive/20" style={mapContainerStyle}>
-        <AlertTriangle className="h-10 w-10 text-destructive mb-4" />
-        <h3 className="text-lg font-bold text-destructive">Google Maps API Key is Missing</h3>
-        <p className="text-muted-foreground mt-2 max-w-md">
-          The interactive map cannot be loaded. Please add your <code className="font-mono text-xs bg-muted p-1 rounded-sm">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to your <code className="font-mono text-xs bg-muted p-1 rounded-sm">.env</code> file and restart the development server.
-        </p>
-      </div>
+      <Alert variant="destructive" style={mapContainerStyle}>
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Google Maps API Key is Missing</AlertTitle>
+        <AlertDescription>
+          Please add your <code className="font-mono text-xs bg-muted p-1 rounded-sm">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to your <code className="font-mono text-xs bg-muted p-1 rounded-sm">.env</code> file.
+        </AlertDescription>
+      </Alert>
     );
   }
-  
+
   return (
-    <div className="w-full h-full relative" style={mapContainerStyle}>
+    <div className="w-full relative" style={mapContainerStyle}>
       <LoadScript
         googleMapsApiKey={GOOGLE_MAPS_API_KEY}
         libraries={libraries}
@@ -159,41 +87,8 @@ export function CampusMap() {
             <MarkerF
               key={loc.id}
               position={loc.position}
-              onClick={() => handleMarkerClick(loc)}
             />
           ))}
-
-          {activeLocation && (
-            <InfoWindowF
-              position={activeLocation.position}
-              onCloseClick={handleInfoWindowClose}
-            >
-              <div className="space-y-2 p-1 max-w-xs">
-                <div className="flex items-center gap-2">
-                  <DynamicIcon name={activeLocation.icon} className="h-5 w-5 text-primary" />
-                  <h3 className="font-bold text-md text-primary">{activeLocation.name}</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">{activeLocation.description}</p>
-                <Button size="sm" className="w-full" onClick={() => handleGetDirections(activeLocation.position)} disabled={isRouting}>
-                  {isRouting ? "Getting Route..." : "Get Directions"}
-                </Button>
-              </div>
-            </InfoWindowF>
-          )}
-
-          {directions && (
-            <DirectionsRenderer
-              directions={directions}
-              options={{
-                suppressMarkers: true,
-                polylineOptions: {
-                  strokeColor: 'hsl(var(--primary))',
-                  strokeWeight: 5,
-                  strokeOpacity: 0.8,
-                },
-              }}
-            />
-          )}
         </GoogleMap>
       </LoadScript>
     </div>
