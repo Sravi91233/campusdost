@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as LucideIcons from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const mapContainerStyle = {
   width: '100%',
@@ -56,6 +57,7 @@ DynamicIcon.displayName = "DynamicIcon";
 export function CampusMap() {
   const { toast } = useToast();
   const [locations, setLocations] = useState<MapLocation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeMarker, setActiveMarker] = useState<string | null>(null);
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
   const [currentUserLocation, setCurrentUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
@@ -69,11 +71,23 @@ export function CampusMap() {
 
   useEffect(() => {
     const fetchLocations = async () => {
-      const data = await getLocations();
-      setLocations(data);
+      setIsLoading(true);
+      try {
+        const data = await getLocations();
+        setLocations(data);
+      } catch (error) {
+        console.error("Failed to fetch locations:", error);
+        toast({
+          variant: "destructive",
+          title: "Error Loading Map Pins",
+          description: "Could not load locations from the database. Please check Firestore rules.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchLocations();
-  }, []);
+  }, [toast]);
 
   const mapCenter = useMemo(() => {
     if (locations.length > 0) {
@@ -135,14 +149,19 @@ export function CampusMap() {
   }
 
   return (
-    <div className="w-full h-full" style={mapContainerStyle}>
+    <div className="w-full h-full relative" style={mapContainerStyle}>
+       {isLoading && (
+        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
       <GoogleMap
         mapContainerStyle={{ width: '100%', height: '100%' }}
         center={mapCenter}
         zoom={16}
         options={mapOptions}
       >
-        {locations.map((loc) => (
+        {!isLoading && locations.map((loc) => (
           <MarkerF
             key={loc.id}
             position={loc.position}
@@ -185,6 +204,11 @@ export function CampusMap() {
           />
         )}
       </GoogleMap>
+      {!isLoading && locations.length === 0 && (
+         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background p-3 rounded-lg shadow-lg text-sm text-muted-foreground z-10">
+           No locations found. Add some in the admin panel!
+         </div>
+      )}
     </div>
   );
 }
