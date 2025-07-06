@@ -37,20 +37,27 @@ export function AdminMapConfig() {
     if (e.latLng && bounds) {
       const lat = e.latLng.lat();
       const lng = e.latLng.lng();
+      const newBounds = { ...bounds };
+      
       switch (corner) {
         case 'nw':
-          setBounds({ ...bounds, north: lat, west: lng });
+          newBounds.north = lat;
+          newBounds.west = lng;
           break;
         case 'ne':
-          setBounds({ ...bounds, north: lat, east: lng });
+          newBounds.north = lat;
+          newBounds.east = lng;
           break;
         case 'sw':
-          setBounds({ ...bounds, south: lat, west: lng });
+          newBounds.south = lat;
+          newBounds.west = lng;
           break;
         case 'se':
-          setBounds({ ...bounds, south: lat, east: lng });
+          newBounds.south = lat;
+          newBounds.east = lng;
           break;
       }
+      setBounds(newBounds);
     }
   };
 
@@ -87,25 +94,25 @@ export function AdminMapConfig() {
             <MarkerF
               position={{ lat: bounds.north, lng: bounds.west }}
               draggable={true}
-              onDragEnd={(e) => handleMarkerDrag('nw', e)}
+              onDrag={(e) => handleMarkerDrag('nw', e)}
               label="NW"
             />
              <MarkerF
               position={{ lat: bounds.north, lng: bounds.east }}
               draggable={true}
-              onDragEnd={(e) => handleMarkerDrag('ne', e)}
+              onDrag={(e) => handleMarkerDrag('ne', e)}
               label="NE"
             />
             <MarkerF
               position={{ lat: bounds.south, lng: bounds.west }}
               draggable={true}
-              onDragEnd={(e) => handleMarkerDrag('sw', e)}
+              onDrag={(e) => handleMarkerDrag('sw', e)}
               label="SW"
             />
             <MarkerF
               position={{ lat: bounds.south, lng: bounds.east }}
               draggable={true}
-              onDragEnd={(e) => handleMarkerDrag('se', e)}
+              onDrag={(e) => handleMarkerDrag('se', e)}
               label="SE"
             />
           </GoogleMap>
