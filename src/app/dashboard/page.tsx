@@ -4,8 +4,9 @@ import { Chatbot } from "@/components/chatbot";
 import { Schedule } from "@/components/schedule";
 import { BuddyMatcher } from "@/components/buddy-matcher";
 import { FeedbackForm } from "@/components/feedback-form";
+import { CampusDiscoveryChallenge } from "@/components/campus-discovery-challenge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Map, MessageCircle, Users, FileText, CalendarDays } from "lucide-react";
+import { Map, MessageCircle, Users, FileText, CalendarDays, Trophy } from "lucide-react";
 import { getSchedule } from "@/services/scheduleService";
 
 export default async function DashboardPage() {
@@ -43,6 +44,16 @@ export default async function DashboardPage() {
             <Chatbot />
           </CardContent>
         </Card>
+
+        <Card className="shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3 text-xl font-headline"><Trophy className="text-primary h-5 w-5"/> Campus Discovery Challenge</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CampusDiscoveryChallenge />
+          </CardContent>
+        </Card>
+
         <Card className="shadow-sm hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-3 text-xl font-headline"><Users className="text-primary h-5 w-5"/> Find Your Buddy</CardTitle>
