@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { GoogleMap, LoadScript, MarkerF, InfoWindowF, Polygon } from "@react-g-maps/api";
+import { GoogleMap, LoadScript, MarkerF, InfoWindowF, Polygon } from "@react-google-maps/api";
 import { getLocations } from "@/services/locationService";
 import type { MapLocation, MapCorners } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
