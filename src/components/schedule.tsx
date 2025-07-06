@@ -1,10 +1,13 @@
-import { getSchedule } from "@/services/scheduleService";
+"use client";
+
 import type { ScheduleSession as Session } from "@/types";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, Mic, Users, Award, Bell, CheckCircle, AlertTriangle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Clock, MapPin, Mic, Users, Award, Bell, CheckCircle } from "lucide-react";
+import { useMap } from "@/context/MapContext";
+import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 
 const SessionIcon = ({ type }: { type: Session["type"] }) => {
   switch (type) {
@@ -43,25 +46,14 @@ const NextSessionCard = ({ session }: { session: Session | null }) => {
 };
 
 
-export async function Schedule() {
-  let scheduleData: Session[];
-  try {
-    scheduleData = await getSchedule();
-  } catch (error) {
-    console.error("Failed to fetch schedule:", error);
-    return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Error Loading Schedule</AlertTitle>
-        <AlertDescription>
-          Could not connect to the database. This is likely due to Firestore security rules.
-          Please check your Firebase project configuration.
-        </AlertDescription>
-      </Alert>
-    );
-  }
+export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
+  const { setFocusedVenueName } = useMap();
+  const [now, setNow] = useState(new Date());
 
-  const now = new Date();
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   let nextSession: Session | null = null;
   const updatedSchedule = scheduleData.map(session => {
@@ -105,12 +97,23 @@ export async function Schedule() {
                 <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> <strong>Venue:</strong> {session.venue}</p>
                 {session.speaker && <p className="flex items-center gap-2"><Mic className="h-4 w-4 text-primary" /> <strong>Speaker:</strong> {session.speaker}</p>}
                 <p>{session.description}</p>
-                {session.badge && (
-                  <Badge variant="secondary" className="mt-2">
-                    <Award className="mr-2 h-4 w-4" />
-                    Badge Unlocked: {session.badge}
-                  </Badge>
-                )}
+                <div className="flex items-center justify-between pt-2">
+                    {session.badge ? (
+                      <Badge variant="secondary">
+                        <Award className="mr-2 h-4 w-4" />
+                        Badge Unlocked: {session.badge}
+                      </Badge>
+                    ) : <div/>}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFocusedVenueName(session.venue)}
+                      className="ml-auto"
+                    >
+                      <MapPin className="mr-2 h-4 w-4" />
+                      View on Map
+                    </Button>
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>

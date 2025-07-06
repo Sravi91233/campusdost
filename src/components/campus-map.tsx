@@ -1,12 +1,13 @@
 "use client"
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { GoogleMap, LoadScript, MarkerF, InfoWindowF } from "@react-google-maps/api";
 import { getLocations } from "@/services/locationService";
 import type { MapLocation } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useMap } from "@/context/MapContext";
 
 const mapContainerStyle = {
   width: '100%',
@@ -38,18 +39,11 @@ const mapOptions = {
 const getMarkerIcon = (iconName: string): string => {
   const baseUrl = "http://maps.google.com/mapfiles/ms/icons/";
   switch (iconName) {
-    case "BedDouble": // Hostels
-      return baseUrl + "blue-dot.png";
-    case "Utensils": // Food
-      return baseUrl + "orange-dot.png";
-    case "Library":
-    case "School":
-    case "Building2": // Academic
-      return baseUrl + "purple-dot.png";
-    case "Landmark":
-      return baseUrl + "green-dot.png"; // General
-    default:
-      return baseUrl + "red-dot.png"; // Default
+    case "BedDouble": return baseUrl + "blue-dot.png";
+    case "Utensils": return baseUrl + "orange-dot.png";
+    case "Library": case "School": case "Building2": return baseUrl + "purple-dot.png";
+    case "Landmark": return baseUrl + "green-dot.png";
+    default: return baseUrl + "red-dot.png";
   }
 };
 
@@ -57,6 +51,12 @@ export function CampusMap() {
   const [locations, setLocations] = useState<MapLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
+  const { focusedVenueName, setFocusedVenueName } = useMap();
+  const mapRef = useRef<google.maps.Map | null>(null);
+
+  const handleMapLoad = (map: google.maps.Map) => {
+    mapRef.current = map;
+  };
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -77,6 +77,25 @@ export function CampusMap() {
     }
   }, []);
 
+  useEffect(() => {
+    if (focusedVenueName && locations.length > 0 && mapRef.current) {
+      const venueLocation = locations.find(loc => loc.name === focusedVenueName);
+      if (venueLocation) {
+        setSelectedLocation(venueLocation);
+        mapRef.current.panTo(venueLocation.position);
+        mapRef.current.setZoom(17);
+      } else {
+        console.warn(`Venue "${focusedVenueName}" not found on map.`);
+        setFocusedVenueName(null);
+      }
+    }
+  }, [focusedVenueName, locations, setFocusedVenueName]);
+
+  const handleInfoWindowClose = () => {
+    setSelectedLocation(null);
+    setFocusedVenueName(null);
+  };
+  
   if (!GOOGLE_MAPS_API_KEY) {
     return (
       <Alert variant="destructive">
@@ -107,6 +126,7 @@ export function CampusMap() {
           center={LPU_COORDS}
           zoom={16}
           options={mapOptions}
+          onLoad={handleMapLoad}
           onClick={() => setSelectedLocation(null)}
         >
           {!isLoading && locations.map(loc => (
@@ -121,7 +141,7 @@ export function CampusMap() {
           {selectedLocation && (
             <InfoWindowF
               position={selectedLocation.position}
-              onCloseClick={() => setSelectedLocation(null)}
+              onCloseClick={handleInfoWindowClose}
             >
               <div className="p-1 max-w-xs">
                 <h3 className="font-bold text-md mb-1">{selectedLocation.name}</h3>
