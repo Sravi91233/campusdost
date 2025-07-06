@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { GoogleMap, LoadScript, MarkerF, InfoWindowF, Polygon } from "@react-google-maps/api";
-import { getLocations } from "@/services/locationService";
 import type { MapLocation, MapCorners } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Loader2, Search, BedDouble, Utensils, Library, Building2, School, Landmark } from "lucide-react";
+import { AlertTriangle, Search, BedDouble, Utensils, Library, Building2, School, Landmark } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useMap } from "@/context/MapContext";
 import { Input } from "@/components/ui/input";
@@ -44,23 +43,9 @@ const iconMap: { [key: string]: React.ElementType } = {
 
 const availableIcons = Object.keys(iconMap);
 
-function isPointInPolygon(point: { lat: number, lng: number }, polygon: { lat: number, lng: number }[]): boolean {
-  let isInside = false;
-  const n = polygon.length;
-  for (let i = 0, j = n - 1; i < n; j = i++) {
-    const xi = polygon[i].lng, yi = polygon[i].lat;
-    const xj = polygon[j].lng, yj = polygon[j].lat;
-    
-    const intersect = ((yi > point.lat) !== (yj > point.lat))
-        && (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
-    if (intersect) isInside = !isInside;
-  }
-  return isInside;
-}
 
-export function CampusMap({ initialCorners }: { initialCorners: MapCorners | null }) {
-  const [locations, setLocations] = useState<MapLocation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function CampusMap({ initialLocations, initialCorners }: { initialLocations: MapLocation[], initialCorners: MapCorners | null }) {
+  const [locations] = useState<MapLocation[]>(initialLocations || []);
   const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
   const { focusedVenueName, setFocusedVenueName } = useMap();
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -109,47 +94,21 @@ export function CampusMap({ initialCorners }: { initialCorners: MapCorners | nul
     mapRef.current = map;
   };
 
-  useEffect(() => {
-    const fetchLocations = async () => {
-      setIsLoading(true);
-      try {
-        const data = await getLocations();
-        setLocations(data);
-      } catch (error) {
-        console.error("Failed to fetch locations:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    if (GOOGLE_MAPS_API_KEY) {
-      fetchLocations();
-    } else {
-      setIsLoading(false);
-    }
-  }, []);
-
   const filteredLocations = useMemo(() => {
     let results = locations;
 
-    // If a search term is active, we start by filtering all locations by name.
-    // Otherwise, we start with only locations inside the polygon.
     if (searchTerm.trim() !== "") {
       results = results.filter(loc => 
         loc.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
-    } else {
-      if (polygonPath.length > 0) {
-        results = results.filter(loc => isPointInPolygon(loc.position, polygonPath));
-      }
     }
-
-    // Then, apply the active icon filters to the current set of results.
+    
     if (activeFilters.length > 0) {
       results = results.filter(loc => activeFilters.includes(loc.icon));
     }
     
     return results;
-  }, [locations, searchTerm, activeFilters, polygonPath]);
+  }, [locations, searchTerm, activeFilters]);
 
   useEffect(() => {
     if (focusedVenueName && locations.length > 0) {
@@ -262,11 +221,6 @@ export function CampusMap({ initialCorners }: { initialCorners: MapCorners | nul
           loadingElement={<Skeleton className="w-full h-full" />}
           id="google-map-script-loader"
         >
-          {isLoading && (
-            <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          )}
           <GoogleMap
             mapContainerStyle={{ width: '100%', height: '100%' }}
             center={LPU_COORDS}
@@ -293,7 +247,7 @@ export function CampusMap({ initialCorners }: { initialCorners: MapCorners | nul
               />
             )}
 
-            {!isLoading && filteredLocations.map(loc => (
+            {filteredLocations.map(loc => (
               <MarkerF
                 key={loc.id}
                 position={loc.position}
