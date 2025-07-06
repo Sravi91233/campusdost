@@ -1,54 +1,198 @@
 "use client"
 
-import Image from "next/image";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF, DirectionsRenderer } from "@react-google-maps/api";
+import { getLocations } from "@/services/locationService";
+import type { MapLocation } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Building2, Utensils, Library, School, BedDouble } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+import * as LucideIcons from "lucide-react";
 
-type Location = {
-  name: string;
-  description: string;
-  icon: React.ElementType;
-  position: { top: string; left: string };
+const mapContainerStyle = {
+  width: '100%',
+  height: '100%',
+  minHeight: '500px',
+  borderRadius: '0.5rem',
 };
 
-const locations: Location[] = [
-  { name: "Hostel Block A", description: "Men's Hostel. Warden: Mr. John Doe", icon: BedDouble, position: { top: "25%", left: "20%" } },
-  { name: "Hostel Block B", description: "Women's Hostel. Warden: Ms. Jane Smith", icon: BedDouble, position: { top: "30%", left: "75%" } },
-  { name: "Central Canteen", description: "Open from 7 AM to 10 PM. Serves a variety of cuisines.", icon: Utensils, position: { top: "50%", left: "50%" } },
-  { name: "Main Library", description: "Your hub for books, research, and quiet study.", icon: Library, position: { top: "70%", left: "30%" } },
-  { name: "Admin Block", description: "For all administrative queries, fees, and documentation.", icon: Building2, position: { top: "10%", left: "50%" } },
-  { name: "Engineering Dept.", description: "Classrooms and labs for all engineering disciplines.", icon: School, position: { top: "80%", left: "65%" } },
-];
+// A simple, clean map style to focus on the campus
+const mapOptions = {
+  styles: [
+    { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+    { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#f5f5f5" }] },
+    { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+    { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#808080" }] },
+    { featureType: "poi", elementType: "geometry", stylers: [{ color: "#eeeeee" }] },
+    { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#e5e5e5" }] },
+    { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+    { featureType: "road.arterial", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#dadada" }] },
+    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+    { featureType: "road.local", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
+    { featureType: "transit.line", elementType: "geometry", stylers: [{ color: "#e5e5e5" }] },
+    { featureType: "transit.station", elementType: "geometry", stylers: [{ color: "#eeeeee" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#c9c9c9" }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
+  ],
+  disableDefaultUI: true,
+  zoomControl: true,
+};
 
+
+const DynamicIcon = React.memo(({ name, ...props }: { name: string } & LucideIcons.LucideProps) => {
+    const IconComponent = LucideIcons[name as keyof typeof LucideIcons] as React.ElementType;
+    if (!IconComponent) {
+      return <LucideIcons.MapPin {...props} />;
+    }
+    return <IconComponent {...props} />;
+});
+DynamicIcon.displayName = "DynamicIcon";
 
 export function CampusMap() {
+  const { toast } = useToast();
+  const [locations, setLocations] = useState<MapLocation[]>([]);
+  const [activeMarker, setActiveMarker] = useState<string | null>(null);
+  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
+  const [currentUserLocation, setCurrentUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
+  const [isRouting, setIsRouting] = useState(false);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries: ['places', 'marker'],
+  });
+
+  useEffect(() => {
+    const fetchLocations = async () => {
+      const data = await getLocations();
+      setLocations(data);
+    };
+    fetchLocations();
+  }, []);
+
+  const mapCenter = useMemo(() => {
+    if (locations.length > 0) {
+      return locations[0].position;
+    }
+    return { lat: 34.0522, lng: -118.2437 }; // Default to downtown LA if no locations
+  }, [locations]);
+
+  const handleMarkerClick = useCallback((id: string) => {
+    setActiveMarker(id);
+  }, []);
+
+  const handleGetDirections = useCallback((destination: { lat: number, lng: number }) => {
+    setIsRouting(true);
+    setDirections(null);
+    if (!navigator.geolocation) {
+      toast({ variant: "destructive", title: "Geolocation not supported", description: "Your browser does not support geolocation." });
+      setIsRouting(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const origin = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        setCurrentUserLocation(origin);
+
+        const directionsService = new window.google.maps.DirectionsService();
+        directionsService.route(
+          {
+            origin,
+            destination,
+            travelMode: window.google.maps.TravelMode.WALKING,
+          },
+          (result, status) => {
+            if (status === window.google.maps.DirectionsStatus.OK) {
+              setDirections(result);
+            } else {
+              toast({ variant: "destructive", title: "Directions failed", description: "Could not find a route." });
+            }
+            setIsRouting(false);
+          }
+        );
+      },
+      () => {
+        toast({ variant: "destructive", title: "Geolocation failed", description: "Could not get your location. Please enable location services." });
+        setIsRouting(false);
+      }
+    );
+  }, [toast]);
+
+  if (loadError) {
+    return <div className="text-destructive-foreground bg-destructive p-4 rounded-md">Error loading map. Please check your API key and network connection.</div>;
+  }
+  if (!isLoaded) {
+    return <Skeleton style={mapContainerStyle} />;
+  }
+
   return (
-    <div className="relative w-full max-w-3xl mx-auto aspect-[4/3] rounded-lg overflow-hidden border shadow-inner">
-      <Image
-        src="https://placehold.co/800x600.png"
-        alt="Campus Map"
-        layout="fill"
-        objectFit="cover"
-        className="opacity-80"
-        data-ai-hint="campus map sketch"
-      />
-      {locations.map((loc) => (
-        <Popover key={loc.name}>
-          <PopoverTrigger asChild style={{ top: loc.position.top, left: loc.position.left, position: 'absolute' }}>
-            <Button size="icon" variant="secondary" className="rounded-full w-10 h-10 shadow-lg animate-pulse hover:animate-none">
-              <loc.icon className="h-5 w-5 text-primary" />
-              <span className="sr-only">{loc.name}</span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent>
-            <div className="space-y-2">
-              <h3 className="font-bold text-primary">{loc.name}</h3>
-              <p className="text-sm text-muted-foreground">{loc.description}</p>
-            </div>
-          </PopoverContent>
-        </Popover>
-      ))}
+    <div className="w-full h-full" style={mapContainerStyle}>
+      <GoogleMap
+        mapContainerStyle={{ width: '100%', height: '100%' }}
+        center={mapCenter}
+        zoom={16}
+        options={mapOptions}
+      >
+        {locations.map((loc) => (
+          <MarkerF
+            key={loc.id}
+            position={loc.position}
+            onClick={() => handleMarkerClick(loc.id)}
+            title={loc.name}
+            icon={{
+                path: LucideIcons.MapPin,
+                fillColor: 'hsl(var(--primary))',
+                fillOpacity: 1,
+                strokeWeight: 0,
+                scale: 1.5,
+                anchor: new google.maps.Point(12, 24),
+            }}
+          >
+            {activeMarker === loc.id && (
+              <InfoWindowF
+                onCloseClick={() => setActiveMarker(null)}
+                position={loc.position}
+              >
+                <div className="space-y-2 p-1 max-w-xs">
+                  <div className="flex items-center gap-2">
+                    <DynamicIcon name={loc.icon} className="h-5 w-5 text-primary" />
+                    <h3 className="font-bold text-md text-primary">{loc.name}</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{loc.description}</p>
+                  <Button size="sm" className="w-full" onClick={() => handleGetDirections(loc.position)} disabled={isRouting}>
+                    {isRouting ? "Getting Route..." : "Get Directions"}
+                  </Button>
+                </div>
+              </InfoWindowF>
+            )}
+          </MarkerF>
+        ))}
+
+        {currentUserLocation && <MarkerF position={currentUserLocation} title="Your Location" />}
+
+        {directions && (
+          <DirectionsRenderer
+            directions={directions}
+            options={{
+              suppressMarkers: true,
+              polylineOptions: {
+                strokeColor: 'hsl(var(--primary))',
+                strokeWeight: 5,
+                strokeOpacity: 0.8,
+              },
+            }}
+          />
+        )}
+      </GoogleMap>
     </div>
   );
 }
