@@ -109,21 +109,58 @@ export function CampusMap() {
       });
   }, [locations, searchTerm, activeFilters]);
 
+  // Effect to handle focusing on a venue from an external component like the Schedule
   useEffect(() => {
-    if (focusedVenueName && locations.length > 0 && mapRef.current) {
+    if (focusedVenueName && locations.length > 0) {
       const venueLocation = locations.find(loc => loc.name === focusedVenueName);
       if (venueLocation) {
-        setSearchTerm("");
-        setActiveFilters([]);
-        setSelectedLocation(venueLocation);
-        mapRef.current.panTo(venueLocation.position);
-        mapRef.current.setZoom(17);
-      } else {
-        console.warn(`Venue "${focusedVenueName}" not found on map.`);
-        setFocusedVenueName(null);
+        // By setting the search term, we trigger the filteredLocations memo.
+        // The fitBounds effect will then handle the map view automatically.
+        setSearchTerm(venueLocation.name);
+        setActiveFilters([]); // Clear filters to ensure the searched location is visible
+        setSelectedLocation(venueLocation); // Open the info window for the focused location
       }
+      // Important: clear the focus context so this doesn't interfere with user interaction later.
+      // This allows the user to clear the search and see all locations again.
+      setFocusedVenueName(null);
     }
   }, [focusedVenueName, locations, setFocusedVenueName]);
+
+
+  // Effect to automatically adjust map bounds based on filtered locations
+  useEffect(() => {
+    if (!mapRef.current || locations.length === 0) {
+      return; // Map not ready or no locations loaded yet
+    }
+
+    // If an info window is open but its marker is filtered out, close the window.
+    if (selectedLocation && !filteredLocations.find(l => l.id === selectedLocation.id)) {
+        setSelectedLocation(null);
+    }
+    
+    if (filteredLocations.length === 0) {
+      // If no locations match filters, reset to the default campus view
+      mapRef.current.panTo(LPU_COORDS);
+      mapRef.current.setZoom(16);
+      return;
+    }
+    
+    if (filteredLocations.length === 1) {
+      // If only one location, pan to it with a close-up zoom.
+      mapRef.current.panTo(filteredLocations[0].position);
+      mapRef.current.setZoom(17);
+      return;
+    }
+
+    // If multiple locations, create bounds and fit them on the map.
+    const bounds = new window.google.maps.LatLngBounds();
+    filteredLocations.forEach(loc => {
+        bounds.extend(loc.position);
+    });
+    mapRef.current.fitBounds(bounds);
+
+  }, [filteredLocations, locations.length]); // Re-run this logic whenever filtered locations change
+
 
   const handleInfoWindowClose = () => {
     setSelectedLocation(null);
