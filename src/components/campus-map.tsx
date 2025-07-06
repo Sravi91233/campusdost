@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as LucideIcons from "lucide-react";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 
 const mapContainerStyle = {
   width: '100%',
@@ -18,6 +18,7 @@ const mapContainerStyle = {
 };
 
 const libraries = ['places'] as const;
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 const mapOptions = {
   disableDefaultUI: true,
@@ -44,7 +45,7 @@ export function CampusMap() {
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
     libraries: libraries,
   });
 
@@ -65,7 +66,11 @@ export function CampusMap() {
         setIsLoading(false);
       }
     };
-    fetchLocations();
+    if(GOOGLE_MAPS_API_KEY) {
+      fetchLocations();
+    } else {
+        setIsLoading(false);
+    }
   }, [toast]);
 
   const mapCenter = useMemo(() => {
@@ -124,8 +129,20 @@ export function CampusMap() {
     );
   }, [toast]);
   
+  if (!GOOGLE_MAPS_API_KEY) {
+    return (
+      <div className="flex flex-col h-[500px] w-full items-center justify-center rounded-lg bg-destructive/10 text-center border border-destructive/20" style={mapContainerStyle}>
+        <AlertTriangle className="h-10 w-10 text-destructive mb-4" />
+        <h3 className="text-lg font-bold text-destructive">Google Maps API Key is Missing</h3>
+        <p className="text-muted-foreground mt-2 max-w-md">
+          The interactive map cannot be loaded. Please add your <code className="font-mono text-xs bg-muted p-1 rounded-sm">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to your <code className="font-mono text-xs bg-muted p-1 rounded-sm">.env</code> file and restart the development server.
+        </p>
+      </div>
+    );
+  }
+  
   if (loadError) {
-    return <div className="text-destructive-foreground bg-destructive p-4 rounded-md">Error loading map. Please check your API key and network connection.</div>;
+    return <div className="text-destructive-foreground bg-destructive p-4 rounded-md">Error loading map. Please check your API key settings in the Google Cloud Console.</div>;
   }
   if (!isLoaded) {
     return <Skeleton style={mapContainerStyle} />;
