@@ -148,14 +148,6 @@ export function CampusMap() {
             position={loc.position}
             onClick={() => handleMarkerClick(loc.id)}
             title={loc.name}
-            icon={{
-                path: LucideIcons.MapPin,
-                fillColor: 'hsl(var(--primary))',
-                fillOpacity: 1,
-                strokeWeight: 0,
-                scale: 1.5,
-                anchor: new google.maps.Point(12, 24),
-            }}
           >
             {activeMarker === loc.id && (
               <InfoWindowF
