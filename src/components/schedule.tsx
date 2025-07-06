@@ -1,31 +1,9 @@
-"use client";
-
-import { useState, useEffect, useMemo } from "react";
+import { getSchedule } from "@/services/scheduleService";
+import type { ScheduleSession as Session } from "@/types";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, MapPin, Mic, Users, Award, Bell, CheckCircle } from "lucide-react";
-
-type Session = {
-  time: string;
-  title: string;
-  speaker?: string;
-  venue: string;
-  description: string;
-  type: "talk" | "workshop" | "tour" | "social";
-  badge?: string;
-  isPast?: boolean;
-};
-
-const scheduleData: Session[] = [
-  { time: "09:00", title: "Welcome & Registration", venue: "Main Auditorium", description: "Collect your student kit and kick off the day.", type: "social" },
-  { time: "10:00", title: "Dean's Inaugural Address", speaker: "Dr. Evelyn Reed", venue: "Main Auditorium", description: "An opening address from the Dean of Academics.", type: "talk", badge: "Initiate" },
-  { time: "11:30", title: "Campus Discovery Tour", venue: "Starts at Admin Block", description: "A guided tour of all the important locations on campus.", type: "tour", badge: "Explorer" },
-  { time: "13:00", title: "Lunch Break", venue: "Central Canteen", description: "Enjoy a delicious lunch and mingle with fellow students.", type: "social" },
-  { time: "14:30", title: "Intro to University Systems", speaker: "Mr. Alan Grant", venue: "Library Seminar Hall", description: "Learn how to use the library, WiFi, and other university digital resources.", type: "workshop", badge: "Tech Savvy" },
-  { time: "16:00", title: "Meet Your Department", venue: "Respective Department Blocks", description: "An ice-breaking session with your faculty and classmates.", type: "workshop" },
-  { time: "17:30", title: "Student Club Fair", venue: "Sports Complex", description: "Explore various student clubs and find your passion.", type: "social", badge: "Community Builder" },
-];
 
 const SessionIcon = ({ type }: { type: Session["type"] }) => {
   switch (type) {
@@ -38,7 +16,17 @@ const SessionIcon = ({ type }: { type: Session["type"] }) => {
 };
 
 const NextSessionCard = ({ session }: { session: Session | null }) => {
-  if (!session) return null;
+  if (!session) return (
+     <Card className="bg-primary/10 border-primary/50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-3 text-primary">
+          <CheckCircle />
+          Induction Complete!
+        </CardTitle>
+        <CardDescription>All sessions for today are over. Well done!</CardDescription>
+      </CardHeader>
+    </Card>
+  );
 
   return (
     <Card className="bg-primary/10 border-primary/50 shadow-lg animate-fade-in">
@@ -54,37 +42,33 @@ const NextSessionCard = ({ session }: { session: Session | null }) => {
 };
 
 
-export function Schedule() {
-  const [currentTime, setCurrentTime] = useState(new Date());
+export async function Schedule() {
+  const scheduleData = await getSchedule();
+  const now = new Date();
 
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000); // Update every minute
-    return () => clearInterval(timer);
-  }, []);
+  let nextSession: Session | null = null;
+  const updatedSchedule = scheduleData.map(session => {
+    const [hours, minutes] = session.time.split(':').map(Number);
+    const sessionTime = new Date(now);
+    sessionTime.setHours(hours, minutes, 0, 0);
 
-  const { updatedSchedule, nextSession } = useMemo(() => {
-    const now = currentTime;
-    let nextSession: Session | null = null;
-    const updatedSchedule = scheduleData.map(session => {
-      const [hours, minutes] = session.time.split(':').map(Number);
-      const sessionTime = new Date(now);
-      sessionTime.setHours(hours, minutes, 0, 0);
+    const isPast = now.getTime() > sessionTime.getTime();
+    if (!isPast && !nextSession) {
+      nextSession = session;
+    }
+    return { ...session, isPast };
+  });
 
-      const isPast = now > sessionTime;
-      if (!isPast && !nextSession) {
-        nextSession = session;
-      }
-      return { ...session, isPast };
-    });
-    return { updatedSchedule, nextSession };
-  }, [currentTime]);
+  if (scheduleData.length === 0) {
+    return <p className="text-muted-foreground text-center">No schedule has been set up yet. Please check back later.</p>
+  }
 
   return (
     <div className="space-y-6">
       <NextSessionCard session={nextSession} />
       <Accordion type="single" collapsible className="w-full">
         {updatedSchedule.map((session, index) => (
-          <AccordionItem key={index} value={`item-${index}`} className={session.isPast ? "opacity-60" : ""}>
+          <AccordionItem key={session.id || index} value={`item-${index}`} className={session.isPast ? "opacity-60" : ""}>
             <AccordionTrigger className="hover:no-underline">
               <div className="flex items-center gap-4 w-full">
                 <div className={`p-2 rounded-full ${session.isPast ? 'bg-muted' : 'bg-accent'}`}>
