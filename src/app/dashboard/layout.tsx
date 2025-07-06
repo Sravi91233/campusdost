@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BookOpenCheck, User } from "lucide-react";
+import { BookOpenCheck, User, Shield } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function DashboardLayout({
   children,
@@ -15,12 +16,20 @@ export default function DashboardLayout({
             <BookOpenCheck className="h-7 w-7 text-primary" />
             <span className="font-bold text-xl font-headline">Campus Compass</span>
           </Link>
-          <Avatar>
-            <AvatarImage src="https://placehold.co/40x40.png" alt="Student" data-ai-hint="student avatar" />
-            <AvatarFallback>
-              <User />
-            </AvatarFallback>
-          </Avatar>
+          <div className="flex items-center gap-4">
+            <Button asChild variant="ghost" size="icon">
+              <Link href="/admin">
+                <Shield className="h-5 w-5" />
+                <span className="sr-only">Admin Panel</span>
+              </Link>
+            </Button>
+            <Avatar>
+              <AvatarImage src="https://placehold.co/40x40.png" alt="Student" data-ai-hint="student avatar" />
+              <AvatarFallback>
+                <User />
+              </AvatarFallback>
+            </Avatar>
+          </div>
         </div>
       </header>
       <main className="container py-8">{children}</main>
