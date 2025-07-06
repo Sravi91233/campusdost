@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { GoogleMap, LoadScript, MarkerF } from "@react-google-maps/api";
 import { getLocations } from "@/services/locationService";
 import type { MapLocation } from "@/types";
@@ -10,16 +10,29 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const mapContainerStyle = {
   width: '100%',
-  height: '500px', // Using a fixed height for diagnostics
+  height: '500px',
   borderRadius: '0.5rem',
 };
 
 const libraries = ['places'] as const;
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
+const LPU_COORDS = { lat: 31.2550, lng: 75.7056 };
+
 const mapOptions = {
   disableDefaultUI: true,
   zoomControl: true,
+  restriction: {
+    latLngBounds: {
+      north: 31.2650,
+      south: 31.2450,
+      west: 75.6956,
+      east: 75.7156,
+    },
+    strictBounds: false,
+  },
+  minZoom: 15,
+  maxZoom: 18,
 };
 
 export function CampusMap() {
@@ -44,13 +57,6 @@ export function CampusMap() {
       setIsLoading(false);
     }
   }, []);
-
-  const mapCenter = useMemo(() => {
-    if (locations.length > 0) {
-      return locations[0].position;
-    }
-    return { lat: 31.2550, lng: 75.7056 }; // Default to LPU campus
-  }, [locations]);
 
   if (!GOOGLE_MAPS_API_KEY) {
     return (
@@ -79,7 +85,7 @@ export function CampusMap() {
         )}
         <GoogleMap
           mapContainerStyle={{ width: '100%', height: '100%' }}
-          center={mapCenter}
+          center={LPU_COORDS}
           zoom={16}
           options={mapOptions}
         >
