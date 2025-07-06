@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { GoogleMap, LoadScript, MarkerF, InfoWindowF, Polygon } from "@react-google-maps/api";
+import { useJsApiLoader, GoogleMap, MarkerF, InfoWindowF, Polygon } from "@react-google-maps/api";
 import type { MapLocation, MapCorners } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, Search, BedDouble, Utensils, Library, Building2, School, Landmark } from "lucide-react";
@@ -53,6 +53,12 @@ export function CampusMap({ initialLocations, initialCorners }: { initialLocatio
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries,
+    id: 'google-map-script'
+  });
+
   const polygonPath = useMemo(() => {
     if (!initialCorners) return [];
     return [initialCorners.nw, initialCorners.sw, initialCorners.se, initialCorners.ne];
@@ -185,6 +191,30 @@ export function CampusMap({ initialLocations, initialCorners }: { initialLocatio
     );
   }
 
+  if (loadError) {
+    return (
+       <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Could not load map</AlertTitle>
+        <AlertDescription>
+          There was an error loading the Google Maps script. Please check your API key and network connection.
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="space-y-4">
+         <div className="flex flex-col sm:flex-row gap-2">
+            <Skeleton className="h-10 flex-grow" />
+            <Skeleton className="h-10 w-[196px]" />
+         </div>
+         <Skeleton className="w-full h-[500px]" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-2">
@@ -215,12 +245,6 @@ export function CampusMap({ initialLocations, initialCorners }: { initialLocatio
         </ToggleGroup>
       </div>
       <div className="w-full relative" style={mapContainerStyle}>
-        <LoadScript
-          googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-          libraries={libraries}
-          loadingElement={<Skeleton className="w-full h-full" />}
-          id="google-map-script-loader"
-        >
           <GoogleMap
             mapContainerStyle={{ width: '100%', height: '100%' }}
             center={LPU_COORDS}
@@ -268,7 +292,6 @@ export function CampusMap({ initialLocations, initialCorners }: { initialLocatio
               </InfoWindowF>
             )}
           </GoogleMap>
-        </LoadScript>
       </div>
     </div>
   );

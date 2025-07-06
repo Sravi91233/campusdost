@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { GoogleMap, LoadScript, MarkerF } from "@react-google-maps/api";
+import { GoogleMap, useJsApiLoader, MarkerF, Polygon } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { getMapCorners, setMapCorners } from "@/services/mapConfigService";
 import type { MapCorners } from "@/types";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 
 const mapContainerStyle = {
   width: '100%',
@@ -22,6 +25,12 @@ export function AdminMapConfig() {
   const [corners, setCorners] = useState<MapCorners | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    id: 'admin-map-bounds-script'
+  });
+
 
   useEffect(() => {
     async function fetchCorners() {
@@ -65,11 +74,25 @@ export function AdminMapConfig() {
     setIsSaving(false);
   };
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (loadError) {
+    return (
+       <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Could not load map</AlertTitle>
+        <AlertDescription>
+          There was an error loading the Google Maps script. Please check your API key and network connection.
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
+  if (isLoading || !isLoaded) {
+    return <Skeleton style={mapContainerStyle} />;
   }
   
   if (!corners) return null;
+
+  const polygonPath = [corners.nw, corners.sw, corners.se, corners.ne];
 
   return (
     <div className="space-y-4">
@@ -77,12 +100,22 @@ export function AdminMapConfig() {
         Drag the four corner markers to define the campus area. The map will show a polygon of this shape, and only markers inside it will be visible.
       </p>
       <div style={mapContainerStyle} className="relative">
-        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} id="admin-map-bounds-script">
           <GoogleMap
             mapContainerStyle={{ width: '100%', height: '100%' }}
             center={LPU_COORDS}
             zoom={15}
           >
+            <Polygon
+                paths={polygonPath}
+                options={{
+                  fillColor: "hsl(var(--primary))",
+                  fillOpacity: 0.2,
+                  strokeColor: "hsl(var(--primary))",
+                  strokeOpacity: 0.8,
+                  strokeWeight: 2,
+                  clickable: false,
+                }}
+              />
             <MarkerF
               position={corners.nw}
               draggable={true}
@@ -108,7 +141,6 @@ export function AdminMapConfig() {
               label="SE"
             />
           </GoogleMap>
-        </LoadScript>
       </div>
       <Button onClick={handleSave} disabled={isSaving}>
         {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
