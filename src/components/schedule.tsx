@@ -8,6 +8,7 @@ import { Clock, MapPin, Mic, Users, Award, Bell, CheckCircle } from "lucide-reac
 import { useMap } from "@/context/MapContext";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const SessionIcon = ({ type }: { type: Session["type"] }) => {
   switch (type) {
@@ -48,13 +49,34 @@ const NextSessionCard = ({ session }: { session: Session | null }) => {
 
 export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
   const { setFocusedVenueName } = useMap();
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
+    setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 
+  if (scheduleData.length === 0) {
+    return <p className="text-muted-foreground text-center">No schedule has been set up yet. Please check back later.</p>
+  }
+  
+  if (!now) {
+    // On the server and during the first client render, show a skeleton UI.
+    // This ensures the server and client render identical HTML initially, fixing the hydration error.
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-[96px] w-full" />
+        <div className="w-full space-y-2">
+          <Skeleton className="h-[73px] w-full" />
+          <Skeleton className="h-[73px] w-full" />
+          <Skeleton className="h-[73px] w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  // This logic now only runs on the client after hydration
   let nextSession: Session | null = null;
   const updatedSchedule = scheduleData.map(session => {
     const [hours, minutes] = session.time.split(':').map(Number);
@@ -67,10 +89,6 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
     }
     return { ...session, isPast };
   });
-
-  if (scheduleData.length === 0) {
-    return <p className="text-muted-foreground text-center">No schedule has been set up yet. Please check back later.</p>
-  }
 
   return (
     <div className="space-y-6">
