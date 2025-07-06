@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { GoogleMap, LoadScript, MarkerF, InfoWindowF, Polygon } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, MarkerF, InfoWindowF, Polygon } from "@react-g-maps/api";
 import { getLocations } from "@/services/locationService";
 import type { MapLocation, MapCorners } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -166,42 +166,45 @@ export function CampusMap({ initialCorners }: { initialCorners: MapCorners | nul
 
   useEffect(() => {
     if (!mapRef.current || locations.length === 0) {
-      return; 
+      return;
     }
-
-    if (selectedLocation && !filteredLocations.find(l => l.id === selectedLocation.id)) {
-        setSelectedLocation(null);
-    }
-    
+  
+    // Case 1: No locations match the current filters.
     if (filteredLocations.length === 0 && (searchTerm || activeFilters.length > 0)) {
+      setSelectedLocation(null);
       mapRef.current.panTo(LPU_COORDS);
       mapRef.current.setZoom(16);
       return;
     }
-    
+  
+    // Case 2: Exactly one location matches. Point to it.
     if (filteredLocations.length === 1) {
       mapRef.current.panTo(filteredLocations[0].position);
       mapRef.current.setZoom(17);
+      setSelectedLocation(filteredLocations[0]);
       return;
     }
-    
+  
+    // Case 3: Multiple locations match. Fit them in view and close any info window.
     if (filteredLocations.length > 1) {
-        const bounds = new window.google.maps.LatLngBounds();
-        filteredLocations.forEach(loc => {
-            bounds.extend(loc.position);
-        });
-        mapRef.current.fitBounds(bounds);
+      setSelectedLocation(null);
+      const bounds = new window.google.maps.LatLngBounds();
+      filteredLocations.forEach(loc => {
+        bounds.extend(loc.position);
+      });
+      mapRef.current.fitBounds(bounds);
     } else {
-        if(mapRef.current && mapRestrictionBounds) {
-            const bounds = new window.google.maps.LatLngBounds(
-                { lat: mapRestrictionBounds.south, lng: mapRestrictionBounds.west },
-                { lat: mapRestrictionBounds.north, lng: mapRestrictionBounds.east }
-            );
-            mapRef.current.fitBounds(bounds);
-        }
+      // Case 4: Initial state with no filters. Reset view to overall bounds.
+      setSelectedLocation(null);
+      if (mapRef.current && mapRestrictionBounds) {
+        const bounds = new window.google.maps.LatLngBounds(
+          { lat: mapRestrictionBounds.south, lng: mapRestrictionBounds.west },
+          { lat: mapRestrictionBounds.north, lng: mapRestrictionBounds.east }
+        );
+        mapRef.current.fitBounds(bounds);
+      }
     }
-
-  }, [filteredLocations, locations.length, searchTerm, activeFilters, mapRestrictionBounds, selectedLocation]);
+  }, [filteredLocations, locations.length, searchTerm, activeFilters, mapRestrictionBounds]);
 
 
   const handleInfoWindowClose = () => {
