@@ -129,23 +129,26 @@ export function CampusMap({ initialCorners }: { initialCorners: MapCorners | nul
   }, []);
 
   const filteredLocations = useMemo(() => {
-    return locations.filter(loc => {
+    let results = locations;
+
+    // If a search term is active, we start by filtering all locations by name.
+    // Otherwise, we start with only locations inside the polygon.
+    if (searchTerm.trim() !== "") {
+      results = results.filter(loc => 
+        loc.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    } else {
       if (polygonPath.length > 0) {
-        if (!isPointInPolygon(loc.position, polygonPath)) {
-          return false;
-        }
+        results = results.filter(loc => isPointInPolygon(loc.position, polygonPath));
       }
-      
-      if (activeFilters.length > 0 && !activeFilters.includes(loc.icon)) {
-        return false;
-      }
-      
-      if (searchTerm.trim() !== "" && !loc.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-        return false;
-      }
-      
-      return true;
-    });
+    }
+
+    // Then, apply the active icon filters to the current set of results.
+    if (activeFilters.length > 0) {
+      results = results.filter(loc => activeFilters.includes(loc.icon));
+    }
+    
+    return results;
   }, [locations, searchTerm, activeFilters, polygonPath]);
 
   useEffect(() => {
@@ -198,7 +201,7 @@ export function CampusMap({ initialCorners }: { initialCorners: MapCorners | nul
         }
     }
 
-  }, [filteredLocations, locations.length, searchTerm, activeFilters, mapRestrictionBounds]);
+  }, [filteredLocations, locations.length, searchTerm, activeFilters, mapRestrictionBounds, selectedLocation]);
 
 
   const handleInfoWindowClose = () => {
