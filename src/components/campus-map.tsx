@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as LucideIcons from "lucide-react";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, Info } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 
 const mapContainerStyle = {
   width: '100%',
@@ -42,6 +44,7 @@ export function CampusMap() {
   const [activeLocation, setActiveLocation] = useState<MapLocation | null>(null);
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
   const [isRouting, setIsRouting] = useState(false);
+  const [tilesLoaded, setTilesLoaded] = useState(false);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -77,7 +80,7 @@ export function CampusMap() {
     if (locations.length > 0) {
       return locations[0].position;
     }
-    return { lat: 31.2550, lng: 75.7056 }; // Default to LPU campus if no locations
+    return { lat: 31.2550, lng: 75.7056 }; // Default to LPU campus
   }, [locations]);
 
   const handleMarkerClick = useCallback((location: MapLocation) => {
@@ -160,6 +163,7 @@ export function CampusMap() {
         center={mapCenter}
         zoom={16}
         options={mapOptions}
+        onTilesLoaded={() => setTilesLoaded(true)}
       >
         {!isLoading && locations.map(loc => (
           <MarkerF
@@ -201,6 +205,21 @@ export function CampusMap() {
           />
         )}
       </GoogleMap>
+      {isLoaded && !tilesLoaded && !isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20 p-4">
+          <Alert variant="default" className="max-w-md shadow-lg">
+            <Info className="h-4 w-4" />
+            <AlertTitle>Is the map blank?</AlertTitle>
+            <AlertDescription>
+              The Google Maps API has loaded, but the map tiles are not showing. This is usually due to a configuration issue. Please verify that:
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li><b>Billing is enabled</b> on your Google Cloud project.</li>
+                <li>Your <b>API key restrictions</b> in Google Cloud match your website's URL.</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
       {!isLoading && locations.length === 0 && (
          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background p-3 rounded-lg shadow-lg text-sm text-muted-foreground z-10">
            No locations found. Add some in the admin panel!
