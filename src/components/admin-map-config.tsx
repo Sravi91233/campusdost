@@ -19,6 +19,7 @@ const mapContainerStyle = {
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const LPU_COORDS = { lat: 31.2550, lng: 75.7056 };
+const libraries = ['places'] as const;
 
 export function AdminMapConfig() {
   const { toast } = useToast();
@@ -28,7 +29,8 @@ export function AdminMapConfig() {
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-    id: 'admin-map-bounds-script'
+    id: 'google-map-script',
+    libraries,
   });
 
 
@@ -119,25 +121,25 @@ export function AdminMapConfig() {
             <MarkerF
               position={corners.nw}
               draggable={true}
-              onDrag={(e) => handleMarkerDrag('nw', e)}
+              onDragEnd={(e) => handleMarkerDrag('nw', e)}
               label="NW"
             />
              <MarkerF
               position={corners.ne}
               draggable={true}
-              onDrag={(e) => handleMarkerDrag('ne', e)}
+              onDragEnd={(e) => handleMarkerDrag('ne', e)}
               label="NE"
             />
             <MarkerF
               position={corners.sw}
               draggable={true}
-              onDrag={(e) => handleMarkerDrag('sw', e)}
+              onDragEnd={(e) => handleMarkerDrag('sw', e)}
               label="SW"
             />
             <MarkerF
               position={corners.se}
               draggable={true}
-              onDrag={(e) => handleMarkerDrag('se', e)}
+              onDragEnd={(e) => handleMarkerDrag('se', e)}
               label="SE"
             />
           </GoogleMap>
