@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { GoogleMap, LoadScript, MarkerF } from "@react-google-maps/api";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -33,14 +33,23 @@ export function AdminMapConfig() {
     fetchBounds();
   }, []);
 
-  const handleMarkerDrag = (corner: 'nw' | 'se', e: google.maps.MapMouseEvent) => {
+  const handleMarkerDrag = (corner: 'nw' | 'ne' | 'sw' | 'se', e: google.maps.MapMouseEvent) => {
     if (e.latLng && bounds) {
       const lat = e.latLng.lat();
       const lng = e.latLng.lng();
-      if (corner === 'nw') {
-        setBounds({ ...bounds, north: lat, west: lng });
-      } else {
-        setBounds({ ...bounds, south: lat, east: lng });
+      switch (corner) {
+        case 'nw':
+          setBounds({ ...bounds, north: lat, west: lng });
+          break;
+        case 'ne':
+          setBounds({ ...bounds, north: lat, east: lng });
+          break;
+        case 'sw':
+          setBounds({ ...bounds, south: lat, west: lng });
+          break;
+        case 'se':
+          setBounds({ ...bounds, south: lat, east: lng });
+          break;
       }
     }
   };
@@ -66,7 +75,7 @@ export function AdminMapConfig() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Drag the markers to define the visible map area for users. The North-West marker sets the top-left corner, and the South-East marker sets the bottom-right.
+        Drag the four corner markers to define the visible map area for users.
       </p>
       <div style={mapContainerStyle} className="relative">
         <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} id="admin-map-bounds-script">
@@ -80,6 +89,18 @@ export function AdminMapConfig() {
               draggable={true}
               onDragEnd={(e) => handleMarkerDrag('nw', e)}
               label="NW"
+            />
+             <MarkerF
+              position={{ lat: bounds.north, lng: bounds.east }}
+              draggable={true}
+              onDragEnd={(e) => handleMarkerDrag('ne', e)}
+              label="NE"
+            />
+            <MarkerF
+              position={{ lat: bounds.south, lng: bounds.west }}
+              draggable={true}
+              onDragEnd={(e) => handleMarkerDrag('sw', e)}
+              label="SW"
             />
             <MarkerF
               position={{ lat: bounds.south, lng: bounds.east }}
