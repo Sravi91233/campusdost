@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Handshake } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 type Buddy = {
   name: string;
@@ -16,12 +17,12 @@ type Buddy = {
 const allInterests = ["Tech", "Design", "Sports", "Music", "Literature", "Gaming"];
 
 const allBuddies: Buddy[] = [
-  { name: "Alex Ray", avatar: "https://placehold.co/40x40.png?text=AR", interests: ["Tech", "Gaming"] },
-  { name: "Jordan Lee", avatar: "https://placehold.co/40x40.png?text=JL", interests: ["Sports", "Music"] },
-  { name: "Casey Kim", avatar: "https://placehold.co/40x40.png?text=CK", interests: ["Design", "Literature"] },
-  { name: "Morgan Pat", avatar: "https://placehold.co/40x40.png?text=MP", interests: ["Tech", "Literature"] },
-  { name: "Taylor B.", avatar: "https://placehold.co/40x40.png?text=TB", interests: ["Music", "Gaming", "Design"] },
-  { name: "Sam Jones", avatar: "https://placehold.co/40x40.png?text=SJ", interests: ["Sports", "Tech"] },
+  { name: "Alex Ray", avatar: "https://placehold.co/40x40.png", interests: ["Tech", "Gaming"] },
+  { name: "Jordan Lee", avatar: "https://placehold.co/40x40.png", interests: ["Sports", "Music"] },
+  { name: "Casey Kim", avatar: "https://placehold.co/40x40.png", interests: ["Design", "Literature"] },
+  { name: "Morgan Pat", avatar: "https://placehold.co/40x40.png", interests: ["Tech", "Literature"] },
+  { name: "Taylor B.", avatar: "https://placehold.co/40x40.png", interests: ["Music", "Gaming", "Design"] },
+  { name: "Sam Jones", avatar: "https://placehold.co/40x40.png", interests: ["Sports", "Tech"] },
 ];
 
 export function BuddyMatcher() {
@@ -58,24 +59,26 @@ export function BuddyMatcher() {
       <div className="space-y-3">
         {filteredBuddies.length > 0 ? (
           filteredBuddies.map(buddy => (
-            <Card key={buddy.name} className="p-3 transition-all hover:bg-muted">
-              <div className="flex items-center gap-4">
-                <Avatar>
-                  <AvatarImage src={buddy.avatar} alt={buddy.name} data-ai-hint="person face" />
-                  <AvatarFallback>{buddy.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                </Avatar>
-                <div className="flex-grow">
-                  <p className="font-semibold">{buddy.name}</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {buddy.interests.map(interest => (
-                      <Badge key={interest} variant="secondary" className="text-xs">{interest}</Badge>
-                    ))}
+            <Card key={buddy.name} className="transition-all hover:bg-muted">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-4">
+                  <Avatar>
+                    <AvatarImage src={buddy.avatar} alt={buddy.name} data-ai-hint="person face" />
+                    <AvatarFallback>{buddy.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-grow">
+                    <p className="font-semibold">{buddy.name}</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {buddy.interests.map(interest => (
+                        <Badge key={interest} variant="secondary" className="text-xs">{interest}</Badge>
+                      ))}
+                    </div>
                   </div>
+                  <Button size="sm" variant="ghost">
+                    <Handshake className="h-4 w-4 mr-2"/> Connect
+                  </Button>
                 </div>
-                <Button size="sm" variant="ghost">
-                  <Handshake className="h-4 w-4 mr-2"/> Connect
-                </Button>
-              </div>
+              </CardContent>
             </Card>
           ))
         ) : (
