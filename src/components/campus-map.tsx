@@ -98,20 +98,32 @@ export function CampusMap({ initialBounds }: { initialBounds: MapBounds | null }
   }, []);
 
   const filteredLocations = useMemo(() => {
-    return locations
-      .filter(loc => {
-        if (activeFilters.length > 0) {
-          return activeFilters.includes(loc.icon);
+    return locations.filter(loc => {
+      // Bounds check
+      if (initialBounds) {
+        if (
+          loc.position.lat > initialBounds.north ||
+          loc.position.lat < initialBounds.south ||
+          loc.position.lng > initialBounds.east ||
+          loc.position.lng < initialBounds.west
+        ) {
+          return false;
         }
-        return true;
-      })
-      .filter(loc => {
-        if (searchTerm.trim() === "") {
-          return true;
-        }
-        return loc.name.toLowerCase().includes(searchTerm.toLowerCase());
-      });
-  }, [locations, searchTerm, activeFilters]);
+      }
+      
+      // Filter check
+      if (activeFilters.length > 0 && !activeFilters.includes(loc.icon)) {
+        return false;
+      }
+      
+      // Search term check
+      if (searchTerm.trim() !== "" && !loc.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [locations, searchTerm, activeFilters, initialBounds]);
 
   useEffect(() => {
     if (focusedVenueName && locations.length > 0) {
