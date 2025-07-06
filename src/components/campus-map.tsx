@@ -17,6 +17,8 @@ const mapContainerStyle = {
   borderRadius: '0.5rem',
 };
 
+const libraries = ['places', 'marker'] as const;
+
 // A simple, clean map style to focus on the campus
 const mapOptions = {
   styles: [
@@ -66,7 +68,7 @@ export function CampusMap() {
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries: ['places', 'marker'],
+    libraries: libraries,
   });
 
   useEffect(() => {
