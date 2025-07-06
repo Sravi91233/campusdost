@@ -1,9 +1,10 @@
 import { getSchedule } from "@/services/scheduleService";
 import type { ScheduleSession as Session } from "@/types";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, Mic, Users, Award, Bell, CheckCircle } from "lucide-react";
+import { Clock, MapPin, Mic, Users, Award, Bell, CheckCircle, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const SessionIcon = ({ type }: { type: Session["type"] }) => {
   switch (type) {
@@ -43,7 +44,23 @@ const NextSessionCard = ({ session }: { session: Session | null }) => {
 
 
 export async function Schedule() {
-  const scheduleData = await getSchedule();
+  let scheduleData: Session[];
+  try {
+    scheduleData = await getSchedule();
+  } catch (error) {
+    console.error("Failed to fetch schedule:", error);
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Error Loading Schedule</AlertTitle>
+        <AlertDescription>
+          Could not connect to the database. This is likely due to Firestore security rules.
+          Please check your Firebase project configuration.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   const now = new Date();
 
   let nextSession: Session | null = null;
