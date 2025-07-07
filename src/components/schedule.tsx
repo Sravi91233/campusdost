@@ -62,33 +62,29 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
   }, []);
 
   const studentSchedule = useMemo(() => {
-    // Wait until the user profile is loaded.
     if (!userProfile?.inductionDate) {
       return [];
     }
-    // The user's induction date can be 'YYYY-MM-DD' or a full ISO string.
-    // We normalize it to 'YYYY-MM-DD' for comparison.
+    // Always take just the date part (YYYY-MM-DD) to ensure correct filtering
     const userInductionDateString = userProfile.inductionDate.split('T')[0];
-
-    // Filter sessions to only include those on the user's induction day.
     return scheduleData.filter(session => session.date === userInductionDateString);
   }, [scheduleData, userProfile]);
   
   const formattedInductionDate = useMemo(() => {
     if (userProfile?.inductionDate) {
       try {
-        let dateToParse = userProfile.inductionDate;
-        // Handle both 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:mm:ss.sssZ' formats
-        // by parsing the ISO string directly if it contains a time component.
-        if (!dateToParse.includes('T')) {
-          // If it's just a date, append time to avoid timezone shifts on parsing.
-          dateToParse += 'T00:00:00';
-        }
-        const localDate = new Date(dateToParse);
-        // Check if the created date is valid before formatting
+        // ALWAYS take the date part of the string, regardless of format.
+        // This handles both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss.sssZ".
+        const datePart = userProfile.inductionDate.split('T')[0];
+        
+        // Append a fixed time to make `new Date()` parse it as a LOCAL date.
+        // This is the crucial step to prevent timezone shifts from UTC dates.
+        const localDate = new Date(`${datePart}T00:00:00`);
+
         if (isNaN(localDate.getTime())) {
           return "Invalid Date";
         }
+
         return format(localDate, "PPP"); // e.g., "Jul 9, 2025"
       } catch (error) {
         console.error("Error formatting induction date:", error);
@@ -121,7 +117,6 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
   }
   
   let nextSession: Session | null = null;
-  // This logic only runs if today is the actual induction day.
   const todayString = format(now, 'yyyy-MM-dd');
 
   // Normalize user's induction date for today's check
