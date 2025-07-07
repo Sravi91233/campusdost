@@ -14,42 +14,50 @@ export function AuthRouter({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    // Do nothing until the initial auth state is resolved.
     if (loading) {
-      return; // Wait for the auth state to be confirmed
+      return;
     }
 
     const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
     const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
 
+    // --- Logic for logged-out users ---
     if (!user) {
-      // If the user is not logged in, they should be redirected to login
-      // unless they are already on a public page.
+      // If they are on a protected or admin route, redirect to the login page.
       if (isProtectedRoute || isAdminRoute) {
         router.replace('/login');
       }
-    } else {
-      // User is logged in
-      if (userProfile) {
+      return; // End of logic for logged-out users.
+    }
+
+    // --- Logic for logged-in users ---
+    // We must have the user's profile to make role-based decisions.
+    // If it's not available yet, wait for the next render.
+    if (userProfile) {
+      const isPublicRoute = publicRoutes.includes(pathname);
+      
+      // If a logged-in user is on a public page (login, signup, home),
+      // redirect them to their correct dashboard.
+      if (isPublicRoute) {
         if (userProfile.role === 'admin') {
-          // Admin specific logic
-          if (pathname === '/dashboard') {
-             router.replace('/admin'); // An admin on user dashboard should be redirected
-          }
+          router.replace('/admin');
         } else {
-          // Regular user specific logic
-          if (isAdminRoute) {
-            router.replace('/dashboard'); // A user on an admin route should be redirected
-          }
+          router.replace('/dashboard');
         }
-        
-        // If logged in user is on a public route, redirect them to their dashboard
-        if(publicRoutes.includes(pathname)) {
-            if (userProfile.role === 'admin') {
-                router.replace('/admin');
-            } else {
-                router.replace('/dashboard');
-            }
-        }
+        return;
+      }
+      
+      // If a regular user tries to access an admin route, redirect them.
+      if (userProfile.role !== 'admin' && isAdminRoute) {
+        router.replace('/dashboard');
+        return;
+      }
+
+      // If an admin tries to access the main user dashboard, redirect them.
+      if (userProfile.role === 'admin' && pathname.startsWith('/dashboard')) {
+        router.replace('/admin');
+        return;
       }
     }
   }, [user, userProfile, loading, pathname, router]);

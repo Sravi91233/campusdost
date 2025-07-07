@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { getUserProfile, loginUser as serviceLogin, signUpUser as serviceSignUp } from '@/services/authService';
@@ -78,7 +78,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result;
   }, []);
 
-  const value = { user, userProfile, loading, login, signUp };
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
+    user,
+    userProfile,
+    loading,
+    login,
+    signUp
+  }), [user, userProfile, loading, login, signUp]);
 
   return (
     <AuthContext.Provider value={value}>
