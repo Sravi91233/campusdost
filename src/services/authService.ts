@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  type User,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { SignUpSchema } from '@/types';
@@ -29,25 +30,27 @@ export async function signUpUser(data: SignUpData) {
 
     await setDoc(doc(db, 'users', user.uid), userProfile);
 
-    return { success: true, userId: user.uid };
+    return { success: true, user, profile: userProfile };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
 
-export async function loginUser(email: string, password: string) {
+export async function loginUser(email: string, password: string): Promise<{ success: true; user: User; profile: UserProfile } | { success: false; error: string; }> {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     const profileResult = await getUserProfile(user.uid);
     
     if (profileResult.success && profileResult.profile) {
-      return { success: true, role: profileResult.profile.role };
+      return { success: true, user, profile: profileResult.profile };
     }
-    // Fallback if profile doesn't exist, which is unlikely in a normal flow.
-    return { success: true, role: 'user' as const };
+    
+    await signOut(auth); // Sign out if profile is missing
+    return { success: false, error: 'User profile not found.' };
+
   } catch (error: any) {
-    return { success: false, error: error.message, role: null };
+    return { success: false, error: error.message };
   }
 }
 

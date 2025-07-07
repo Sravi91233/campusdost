@@ -22,9 +22,8 @@ export default function LoginPage() {
     }
   }, [user, userProfile, loading, router]);
 
-  // While the initial auth check is running, show a loader.
-  // Also show a loader if a user is found, because the useEffect above
-  // will be handling the redirection. This prevents the form from flashing.
+  // While the initial auth check is running, or if a user is already
+  // logged in and we are about to redirect, show a loader.
   if (loading || user) {
     return (
       <main className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">

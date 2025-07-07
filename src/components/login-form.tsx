@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { loginUser } from "@/services/authService";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -27,6 +27,7 @@ export function LoginForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
 
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
@@ -38,7 +39,7 @@ export function LoginForm() {
 
   async function onSubmit(values: z.infer<typeof LoginSchema>) {
     setIsLoading(true);
-    const result = await loginUser(values.email, values.password);
+    const result = await login(values);
     setIsLoading(false);
 
     if (result.success) {
@@ -46,8 +47,7 @@ export function LoginForm() {
         title: "Login Successful",
         description: "Redirecting...",
       });
-      // Direct redirect based on the role returned from the service
-      if (result.role === 'admin') {
+      if (result.profile.role === 'admin') {
         router.push('/admin');
       } else {
         router.push('/dashboard');

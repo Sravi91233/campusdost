@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { signUpUser } from "@/services/authService";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { CalendarIcon, Loader2 } from "lucide-react";
@@ -24,10 +24,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 
 export function SignUpForm() {
+  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const { signUp } = useAuth();
 
   const form = useForm<z.infer<typeof SignUpSchema>>({
     resolver: zodResolver(SignUpSchema),
@@ -41,7 +44,7 @@ export function SignUpForm() {
 
   async function onSubmit(values: z.infer<typeof SignUpSchema>) {
     setIsLoading(true);
-    const result = await signUpUser(values);
+    const result = await signUp(values);
     setIsLoading(false);
 
     if (result.success) {
@@ -49,8 +52,7 @@ export function SignUpForm() {
         title: "Account Created",
         description: "Welcome! You've been successfully signed up.",
       });
-      // The redirection is now handled by the parent signup page,
-      // which waits for the AuthContext to update.
+      router.push('/dashboard');
     } else {
       toast({
         title: "Sign Up Failed",
@@ -72,21 +74,21 @@ export function SignUpForm() {
             <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
-                  <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                  <FormControl><Input placeholder="John Doe" {...field} autoComplete="name"/></FormControl>
                   <FormMessage />
                 </FormItem>
             )}/>
             <FormField control={form.control} name="email" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Email</FormLabel>
-                  <FormControl><Input placeholder="student@university.edu" {...field} /></FormControl>
+                  <FormControl><Input placeholder="student@university.edu" {...field} autoComplete="email"/></FormControl>
                   <FormMessage />
                 </FormItem>
             )}/>
             <FormField control={form.control} name="password" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
-                  <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
+                  <FormControl><Input type="password" placeholder="••••••••" {...field} autoComplete="new-password"/></FormControl>
                   <FormMessage />
                 </FormItem>
             )}/>
