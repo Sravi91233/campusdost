@@ -61,23 +61,30 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
   }, []);
 
   const studentSchedule = useMemo(() => {
-    if (!userProfile) return [];
-    
-    // Ensure the user's induction date is valid before proceeding.
+    if (!userProfile?.inductionDate) {
+      return [];
+    }
+
     const userInductionDateObj = new Date(userProfile.inductionDate);
     if (isNaN(userInductionDateObj.getTime())) {
-      return []; // Return empty if the user profile has a bad date.
+      return []; // Invalid induction date on profile
     }
-    const userInductionDate = userInductionDateObj.toDateString();
+    
+    // Get the UTC date string 'YYYY-MM-DD'
+    const userInductionDateString = userInductionDateObj.toISOString().split('T')[0];
 
     return scheduleData.filter(session => {
-      // Gracefully handle potentially invalid date strings from the database.
-      if (!session.date) return false;
+      if (!session.date) {
+        return false;
+      }
       const sessionDateObj = new Date(session.date);
       if (isNaN(sessionDateObj.getTime())) {
         return false; // Skip sessions with invalid dates
       }
-      return sessionDateObj.toDateString() === userInductionDate;
+      
+      const sessionDateString = sessionDateObj.toISOString().split('T')[0];
+      
+      return sessionDateString === userInductionDateString;
     });
   }, [scheduleData, userProfile]);
 
