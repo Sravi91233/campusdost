@@ -8,7 +8,7 @@ import { BuddyMatcher } from "@/components/buddy-matcher";
 import { FeedbackForm } from "@/components/feedback-form";
 import { CampusDiscoveryChallenge } from "@/components/campus-discovery-challenge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Calendar, Users, Bot, MessageSquare, Compass, Handshake } from "lucide-react";
+import { Users, Bot, MessageSquare, Compass, Handshake } from "lucide-react";
 
 export default async function DashboardPage() {
   const scheduleData = await getSchedule();
@@ -25,14 +25,7 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-3 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Calendar /> Induction Schedule</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Schedule scheduleData={scheduleData} />
-            </CardContent>
-          </Card>
+          <Schedule scheduleData={scheduleData} />
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Compass /> Interactive Campus Map</CardTitle>
