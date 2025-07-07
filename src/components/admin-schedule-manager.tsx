@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -19,7 +19,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
@@ -46,6 +45,7 @@ import { addScheduleSession, deleteScheduleSession, getSchedule, updateScheduleS
 import type { ScheduleSession } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -69,6 +69,7 @@ export function ScheduleManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingSession, setEditingSession] = useState<ScheduleSession | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   const form = useForm<SessionFormValues>({
     resolver: zodResolver(formSchema),
@@ -95,20 +96,21 @@ export function ScheduleManager() {
   }, []);
 
   useEffect(() => {
+    if (!isDialogOpen) return;
+
     if (editingSession) {
       form.reset(editingSession);
     } else {
       form.reset({
-        date: new Date().toISOString(),
+        date: selectedDate ? selectedDate.toISOString() : new Date().toISOString(),
         time: "", title: "", speaker: "", venue: "", description: "", type: "talk", badge: "",
       });
     }
-  }, [editingSession, form]);
+  }, [editingSession, form, selectedDate, isDialogOpen]);
 
 
   const handleAddNew = () => {
     setEditingSession(null);
-    form.reset();
     setIsDialogOpen(true);
   };
 
@@ -145,16 +147,30 @@ export function ScheduleManager() {
     setIsSubmitting(false);
   };
   
+  const filteredSessions = useMemo(() => {
+    if (!selectedDate) return [];
+    return sessions
+      .filter(session => {
+        if (!session.date) return false;
+        const sessionDate = new Date(session.date);
+        if (isNaN(sessionDate.getTime())) return false;
+        return sessionDate.toDateString() === selectedDate.toDateString();
+      })
+      .sort((a, b) => a.time.localeCompare(b.time));
+  }, [sessions, selectedDate]);
+  
+  const daysWithEvents = useMemo(() => {
+    return sessions.map(session => new Date(session.date));
+  }, [sessions]);
+
+
   if (isLoading) {
     return <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
     <div className="space-y-4">
-       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <Button onClick={handleAddNew}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Add New Session
-        </Button>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingSession ? "Edit Session" : "Add New Session"}</DialogTitle>
@@ -267,49 +283,93 @@ export function ScheduleManager() {
           </Form>
         </DialogContent>
       </Dialog>
-
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Time</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Venue</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sessions.length > 0 ? sessions.map(session => (
-              <TableRow key={session.id}>
-                <TableCell className="font-medium">
-                  {(() => {
-                    if (!session.date) return <span className="text-destructive">No Date</span>;
-                    const d = new Date(session.date);
-                    return isNaN(d.getTime())
-                      ? <span className="text-destructive">Invalid Date</span>
-                      : format(d, "PPP");
-                  })()}
-                </TableCell>
-                <TableCell><div className="flex items-center gap-2 font-medium"><Clock className="h-4 w-4 text-muted-foreground"/>{session.time}</div></TableCell>
-                <TableCell>{session.title}</TableCell>
-                <TableCell>{session.venue}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(session)}>
-                    <Edit className="h-4 w-4" />
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="md:col-span-1 lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Select a Date</CardTitle>
+              <CardDescription>Pick a day to manage its schedule.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center">
+               <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                className="p-0"
+                modifiers={{ events: daysWithEvents }}
+                modifiersStyles={{
+                  events: {
+                    color: 'hsl(var(--primary-foreground))',
+                    backgroundColor: 'hsl(var(--primary))',
+                  }
+                }}
+              />
+            </CardContent>
+          </Card>
+        </div>
+        <div className="md:col-span-2 lg:col-span-3">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                  <CardTitle>
+                    {selectedDate ? `Schedule for ${format(selectedDate, 'PPP')}` : 'Select a date'}
+                  </CardTitle>
+                  <CardDescription>
+                    {selectedDate ? 'Add, edit, or remove sessions for this day.' : 'No date selected.'}
+                  </CardDescription>
+                </div>
+                 {selectedDate && (
+                  <Button onClick={handleAddNew}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add New Session
                   </Button>
-                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(session.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            )) : (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">No sessions found. Add one to get started!</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {selectedDate ? (
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Venue</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSessions.length > 0 ? filteredSessions.map(session => (
+                        <TableRow key={session.id}>
+                          <TableCell><div className="flex items-center gap-2 font-medium"><Clock className="h-4 w-4 text-muted-foreground"/>{session.time}</div></TableCell>
+                          <TableCell>{session.title}</TableCell>
+                          <TableCell>{session.venue}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(session)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(session.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="h-24 text-center">No sessions found for this date. Add one to get started!</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
+                  <p className="text-muted-foreground">Please select a date from the calendar.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

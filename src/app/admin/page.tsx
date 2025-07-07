@@ -22,15 +22,7 @@ export default function AdminPage() {
           <TabsTrigger value="boundaries"><Map className="mr-2"/>Map Boundaries</TabsTrigger>
         </TabsList>
         <TabsContent value="schedule">
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Schedule</CardTitle>
-              <CardDescription>Add, edit, or remove induction schedule sessions.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScheduleManager />
-            </CardContent>
-          </Card>
+           <ScheduleManager />
         </TabsContent>
         <TabsContent value="locations">
           <Card>
