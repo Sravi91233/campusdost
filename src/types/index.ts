@@ -15,6 +15,8 @@ export const SignUpSchema = z.object({
   autocomplete: z.string().optional(),
 });
 
+// This is the user profile shape used throughout the client-side of the app.
+// It explicitly does NOT contain the password.
 export type UserProfile = {
   uid: string;
   email: string;
@@ -37,7 +39,7 @@ export interface ScheduleSession {
 
 export interface MapLocation {
   id: string;
-  name: string;
+  name:string;
   description: string;
   icon: string;
   position: {

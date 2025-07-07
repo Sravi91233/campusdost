@@ -1,91 +1,79 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { getUserProfile, loginUser as serviceLogin, signUpUser as serviceSignUp } from '@/services/authService';
-import type { UserProfile, LoginSchema as TLogin, SignUpSchema as TSignUp } from '@/types';
+import { loginUser as serviceLogin, signUpUser as serviceSignUp } from '@/services/authService';
+import type { UserProfile, SignUpSchema as TSignUp } from '@/types';
 import type { z } from 'zod';
 
+const AUTH_STORAGE_KEY = 'campus-compass-auth';
+
 type AuthContextType = {
-  user: User | null;
   userProfile: UserProfile | null;
-  loading: boolean; // This is ONLY for the initial auth state check
+  loading: boolean; // For initial localStorage check
   login: (email: string, password: string) => ReturnType<typeof serviceLogin>;
   signUp: (data: z.infer<TSignUp>) => ReturnType<typeof serviceSignUp>;
+  logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextType>({
-  user: null,
   userProfile: null,
   loading: true,
   login: async () => ({ success: false, error: 'Auth not initialized' }),
   signUp: async () => ({ success: false, error: 'Auth not initialized' }),
+  logout: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // This effect runs once on mount to check the current auth state
-  // and set up a listener for future changes.
+  // On initial mount, try to load user from localStorage
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        // User is signed in, get their profile
-        const profileResult = await getUserProfile(currentUser.uid);
-        setUser(currentUser);
-        if (profileResult.success && profileResult.profile) {
-          setUserProfile(profileResult.profile);
-        } else {
-          // Profile doesn't exist or failed to load, sign out for safety
-          setUserProfile(null);
-          auth.signOut();
-        }
-      } else {
-        // User is signed out
-        setUser(null);
-        setUserProfile(null);
+    try {
+      const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (storedUser) {
+        setUserProfile(JSON.parse(storedUser));
       }
+    } catch (error) {
+      console.error("Could not parse user from localStorage", error);
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    } finally {
       setLoading(false);
-    });
-
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
+    }
   }, []);
 
-  // The login function now calls the service and, upon success,
-  // directly updates the context's state. This is crucial.
   const login = useCallback(async (email: string, password: string) => {
     const result = await serviceLogin(email, password);
-    if (result.success) {
-      setUser(result.user);
+    if (result.success && result.profile) {
       setUserProfile(result.profile);
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(result.profile));
     }
     return result;
   }, []);
 
-  // The sign-up function does the same for new users.
   const signUp = useCallback(async (data: z.infer<TSignUp>) => {
     const result = await serviceSignUp(data);
-    if (result.success) {
-      setUser(result.user);
+    if (result.success && result.profile) {
       setUserProfile(result.profile);
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(result.profile));
     }
     return result;
   }, []);
 
-  // Memoize the context value to prevent unnecessary re-renders
+  const logout = useCallback(() => {
+    setUserProfile(null);
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  }, []);
+
   const value = useMemo(() => ({
-    user,
     userProfile,
     loading,
     login,
-    signUp
-  }), [user, userProfile, loading, login, signUp]);
+    signUp,
+    logout
+  }), [userProfile, loading, login, signUp, logout]);
 
   return (
     <AuthContext.Provider value={value}>

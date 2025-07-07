@@ -50,8 +50,8 @@ export function SignUpForm() {
         title: "Account Created",
         description: "Welcome! Redirecting to your dashboard...",
       });
-      // The redirect is now handled by the parent page component.
-      // This form's only job is to sign up the user.
+      // The redirect is now handled by the AuthRouter component based on the
+      // updated context. This form no longer needs to push to the router.
     } else {
       toast({
         title: "Sign Up Failed",

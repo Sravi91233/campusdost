@@ -20,11 +20,13 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { LoginSchema } from "@/types";
+import { useRouter } from "next/navigation";
 
 export function LoginForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
@@ -39,13 +41,13 @@ export function LoginForm() {
     const result = await login(values.email, values.password);
     setIsLoading(false);
 
-    if (result.success) {
+    if (result.success && result.profile) {
       toast({
         title: "Login Successful",
         description: "Redirecting...",
       });
-      // The redirect is now handled by the parent page component.
-      // This form's only job is to authenticate.
+      // The redirect is now handled by the AuthRouter component based on the
+      // updated context. This form no longer needs to push to the router.
     } else {
       toast({
         title: "Login Failed",

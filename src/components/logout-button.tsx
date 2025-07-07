@@ -1,23 +1,21 @@
 "use client";
 
 import { Button } from "./ui/button";
-import { logoutUser } from "@/services/authService";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export function LogoutButton() {
     const router = useRouter();
     const { toast } = useToast();
+    const { logout } = useAuth();
 
-    const handleLogout = async () => {
-        const result = await logoutUser();
-        if (result.success) {
-            toast({ title: "Logged Out", description: "You have been successfully logged out." });
-            router.push("/login");
-        } else {
-            toast({ title: "Logout Failed", description: result.error, variant: "destructive" });
-        }
+    const handleLogout = () => {
+        logout();
+        toast({ title: "Logged Out", description: "You have been successfully logged out." });
+        // Use router.replace to prevent going back to the dashboard via browser history.
+        router.replace("/login");
     };
 
     return (

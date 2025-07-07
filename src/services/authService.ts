@@ -1,88 +1,111 @@
 'use server';
 
-import { auth, db } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  type User,
-} from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  query,
+  where,
+  getDocs,
+  limit,
+} from 'firebase/firestore';
 import { SignUpSchema } from '@/types';
 import type { z } from 'zod';
 import type { UserProfile } from '@/types';
 
 type SignUpData = z.infer<typeof SignUpSchema>;
 
-// The return type now includes the profile on success
-export async function signUpUser(data: SignUpData): Promise<{ success: true, user: User, profile: UserProfile } | { success: false, error: string }> {
+const usersCollectionRef = collection(db, 'users');
+
+// WARNING: THIS IS AN INSECURE AUTHENTICATION SYSTEM.
+// This has been implemented as per a specific user request to bypass Firebase Authentication.
+// Storing and querying plaintext passwords is a significant security vulnerability.
+
+export async function signUpUser(data: SignUpData): Promise<{ success: true, profile: UserProfile } | { success: false, error: string }> {
   try {
-    const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-    const user = userCredential.user;
+    // Check if user already exists
+    const q = query(usersCollectionRef, where("email", "==", data.email), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      return { success: false, error: 'An account with this email already exists.' };
+    }
+
+    // Create a new user document with a generated UID
+    const newUserDocRef = doc(usersCollectionRef);
     
-    const userProfile: UserProfile = {
-      uid: user.uid,
+    // This object includes the password and is ONLY used for writing to Firestore.
+    const userProfileWithPassword = {
+      uid: newUserDocRef.id,
       email: data.email,
       name: data.name,
       registrationNo: data.registrationNo,
       inductionDate: data.inductionDate,
-      role: 'user', // Default role for new sign-ups
+      role: 'user' as const, // Default role for new sign-ups
+      password: data.password, // Storing password in plaintext
     };
 
-    await setDoc(doc(db, 'users', user.uid), userProfile);
+    await setDoc(newUserDocRef, userProfileWithPassword);
+    
+    // Create and return the "safe" profile without the password.
+    const { password, ...safeProfile } = userProfileWithPassword;
 
-    return { success: true, user, profile: userProfile };
+    return { success: true, profile: safeProfile };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    console.error("Sign up error:", error);
+    return { success: false, error: "An unexpected error occurred during sign-up." };
   }
 }
 
-// This function is now fully atomic: it authenticates AND gets the profile.
-export async function loginUser(email: string, password: string): Promise<{ success: true; user: User; profile: UserProfile } | { success: false; error: string; }> {
+export async function loginUser(email: string, passwordAttempt: string): Promise<{ success: true; profile: UserProfile } | { success: false; error: string; }> {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    const profileResult = await getUserProfile(user.uid);
-    
-    if (profileResult.success && profileResult.profile) {
-      return { success: true, user, profile: profileResult.profile };
-    }
-    
-    // If the profile doesn't exist, something is wrong. Sign out for safety.
-    await signOut(auth);
-    return { success: false, error: 'User profile not found.' };
+    const q = query(usersCollectionRef, where("email", "==", email), limit(1));
+    const querySnapshot = await getDocs(q);
 
-  } catch (error: any) {
-    // Convert known Firebase auth errors to friendlier messages
-    let friendlyMessage = "An unexpected error occurred.";
-    switch (error.code) {
-      case 'auth/user-not-found':
-      case 'auth/wrong-password':
-      case 'auth/invalid-credential':
-        friendlyMessage = 'Invalid email or password.';
-        break;
-      case 'auth/invalid-email':
-        friendlyMessage = 'Please enter a valid email address.';
-        break;
+    if (querySnapshot.empty) {
+      return { success: false, error: 'Invalid email or password.' };
     }
-    return { success: false, error: friendlyMessage };
-  }
-}
 
-export async function logoutUser() {
-  try {
-    await signOut(auth);
-    return { success: true };
+    const userDoc = querySnapshot.docs[0];
+    const userData = userDoc.data(); // This object from Firestore includes the password field.
+
+    if (userData.password !== passwordAttempt) {
+      return { success: false, error: 'Invalid email or password.' };
+    }
+
+    // Create and return the "safe" profile without the password.
+    const safeProfile: UserProfile = {
+      uid: userDoc.id,
+      email: userData.email,
+      name: userData.name,
+      registrationNo: userData.registrationNo,
+      inductionDate: userData.inductionDate,
+      role: userData.role,
+    };
+
+    return { success: true, profile: safeProfile };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    console.error("Login error:", error);
+    return { success: false, error: "An unexpected error occurred during login." };
   }
 }
 
 export async function getUserProfile(uid: string): Promise<{ success: true, profile: UserProfile } | { success: false, error: string}> {
     try {
-        const userDoc = await getDoc(doc(db, 'users', uid));
-        if (userDoc.exists()) {
-            return { success: true, profile: userDoc.data() as UserProfile };
+        const userDocRef = doc(db, 'users', uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            const safeProfile: UserProfile = {
+              uid: userDocSnap.id,
+              email: userData.email,
+              name: userData.name,
+              registrationNo: userData.registrationNo,
+              inductionDate: userData.inductionDate,
+              role: userData.role,
+            };
+            return { success: true, profile: safeProfile };
         } else {
             return { success: false, error: 'User profile not found.' };
         }
