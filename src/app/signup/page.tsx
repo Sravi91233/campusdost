@@ -11,10 +11,9 @@ export default function SignUpPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Wait until the initial loading is done, and we have a user and their profile.
+    // This effect handles the case where a user is ALREADY logged in
+    // and navigates to the signup page. It should redirect them away.
     if (!loading && user && userProfile) {
-      // New users are always 'user' role, so redirect to dashboard.
-      // An admin might be viewing this page while logged in, so handle that case.
       if (userProfile.role === 'admin') {
         router.replace('/admin');
       } else {
@@ -23,8 +22,8 @@ export default function SignUpPage() {
     }
   }, [user, userProfile, loading, router]);
   
-  // If the auth state is loading, or if a user is logged in but we are waiting
-  // for the redirect to happen, show a loading spinner.
+  // Show a loader while the initial auth check is running,
+  // or if we have a user and are about to redirect.
   if (loading || user) {
      return (
       <main className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">

@@ -44,10 +44,10 @@ export async function loginUser(email: string, password: string) {
     if (profileResult.success && profileResult.profile) {
       return { success: true, role: profileResult.profile.role };
     }
-    // Fallback if profile doesn't exist, though this shouldn't happen in a normal flow.
+    // Fallback if profile doesn't exist, which is unlikely in a normal flow.
     return { success: true, role: 'user' as const };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, role: null };
   }
 }
 

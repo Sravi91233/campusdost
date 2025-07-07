@@ -20,9 +20,11 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { LoginSchema } from "@/types";
+import { useRouter } from "next/navigation";
 
 
 export function LoginForm() {
+  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -44,8 +46,12 @@ export function LoginForm() {
         title: "Login Successful",
         description: "Redirecting...",
       });
-      // The redirection is now handled by the parent login page,
-      // which waits for the AuthContext to update.
+      // Direct redirect based on the role returned from the service
+      if (result.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
     } else {
       toast({
         title: "Login Failed",
@@ -71,7 +77,7 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="student@university.edu" {...field} />
+                    <Input placeholder="student@university.edu" {...field} autoComplete="email"/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -84,7 +90,7 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
+                    <Input type="password" placeholder="••••••••" {...field} autoComplete="current-password" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
