@@ -1,3 +1,4 @@
+
 import * as z from 'zod';
 
 export const LoginSchema = z.object({
@@ -56,4 +57,11 @@ export interface MapCorners {
   ne: { lat: number, lng: number };
   sw: { lat: number, lng: number };
   se: { lat: number, lng: number };
+}
+
+export interface Connection {
+  id: string;
+  participants: [string, string];
+  status: 'pending' | 'connected';
+  requestedBy: string;
 }
