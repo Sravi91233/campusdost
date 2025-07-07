@@ -60,7 +60,7 @@ export default function DashboardPage() {
 
         {/* Right Column */}
         <div className="lg:col-span-2 space-y-6">
-           <Card>
+           <Card id="buddy-feature-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Handshake /> Find a Buddy</CardTitle>
             </CardHeader>

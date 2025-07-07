@@ -9,9 +9,11 @@ import type { UserProfile, Connection } from "@/types";
 import { Loader2 } from "lucide-react";
 import { BuddyMatcher } from "@/components/buddy-matcher";
 import { ChatDialog } from "@/components/chat-dialog";
+import { useNotification } from "@/context/NotificationContext";
 
 export function BuddyFeatureWrapper() {
   const { userProfile } = useAuth();
+  const { setUnreadConnectionCount } = useNotification();
   const [buddies, setBuddies] = useState<UserProfile[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,11 +29,17 @@ export function BuddyFeatureWrapper() {
         ]);
         setBuddies(buddiesData);
         setConnections(connectionsData);
+
+        const incomingRequests = connectionsData.filter(c => 
+            c.status === 'pending' && c.requestedBy !== userProfile.uid
+        ).length;
+        setUnreadConnectionCount(incomingRequests);
+        
         setIsLoading(false);
       }
     }
     fetchData();
-  }, [userProfile]);
+  }, [userProfile, setUnreadConnectionCount]);
 
   const allUsersForProfileLookup = useMemo(() => {
       if (!userProfile) return [];
@@ -59,7 +67,16 @@ export function BuddyFeatureWrapper() {
       <BuddyMatcher
         potentialBuddies={buddies}
         connections={connections}
-        onConnectionsUpdate={setConnections}
+        onConnectionsUpdate={(updatedConnections) => {
+            setConnections(updatedConnections);
+            // Recalculate notifications on update
+            if (userProfile) {
+                 const incomingRequests = updatedConnections.filter(c => 
+                    c.status === 'pending' && c.requestedBy !== userProfile.uid
+                ).length;
+                setUnreadConnectionCount(incomingRequests);
+            }
+        }}
         onStartChat={setActiveChat}
       />
       
