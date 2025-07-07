@@ -28,6 +28,7 @@ export type UserProfile = {
 
 export interface ScheduleSession {
   id: string;
+  date: string;
   time: string;
   title: string;
   speaker?: string;

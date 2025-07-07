@@ -4,11 +4,12 @@ import type { ScheduleSession as Session } from "@/types";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, Mic, Users, Award, Bell, CheckCircle } from "lucide-react";
+import { Clock, MapPin, Mic, Users, Award, Bell, CheckCircle, Loader2 } from "lucide-react";
 import { useMap } from "@/context/MapContext";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/context/AuthContext";
 
 const SessionIcon = ({ type }: { type: Session["type"] }) => {
   switch (type) {
@@ -49,6 +50,7 @@ const NextSessionCard = ({ session }: { session: Session | null }) => {
 
 export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
   const { setFocusedVenueName } = useMap();
+  const { userProfile, loading: authLoading } = useAuth();
   const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -57,13 +59,19 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
     return () => clearInterval(timer);
   }, []);
 
-  if (scheduleData.length === 0) {
-    return <p className="text-muted-foreground text-center">No schedule has been set up yet. Please check back later.</p>
-  }
-  
-  if (!now) {
-    // On the server and during the first client render, show a skeleton UI.
-    // This ensures the server and client render identical HTML initially, fixing the hydration error.
+  const studentSchedule = useMemo(() => {
+    if (!userProfile) return [];
+    
+    const userInductionDate = new Date(userProfile.inductionDate).toDateString();
+
+    return scheduleData.filter(session => {
+      const sessionDate = new Date(session.date).toDateString();
+      return sessionDate === userInductionDate;
+    });
+  }, [scheduleData, userProfile]);
+
+  if (authLoading || !now) {
+    // Show a comprehensive skeleton UI while auth or date is loading
     return (
       <div className="space-y-6">
         <Skeleton className="h-[96px] w-full" />
@@ -75,10 +83,14 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
       </div>
     );
   }
+  
+  if (studentSchedule.length === 0) {
+    return <p className="text-muted-foreground text-center p-8">No induction sessions scheduled for your selected date. Please check with the administration.</p>
+  }
 
   // This logic now only runs on the client after hydration
   let nextSession: Session | null = null;
-  const updatedSchedule = scheduleData.map(session => {
+  const updatedSchedule = studentSchedule.map(session => {
     const [hours, minutes] = session.time.split(':').map(Number);
     const sessionTime = new Date(now);
     sessionTime.setHours(hours, minutes, 0, 0);

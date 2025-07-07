@@ -8,7 +8,7 @@ import { revalidatePath } from 'next/cache';
 const scheduleCollectionRef = collection(db, 'schedule');
 
 export async function getSchedule(): Promise<ScheduleSession[]> {
-  const q = query(scheduleCollectionRef, orderBy("time"));
+  const q = query(scheduleCollectionRef, orderBy("date"), orderBy("time"));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ScheduleSession));
 }

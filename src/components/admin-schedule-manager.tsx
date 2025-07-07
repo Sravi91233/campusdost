@@ -40,11 +40,16 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Edit, Trash2, Loader2, Clock } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Loader2, Clock, CalendarIcon } from "lucide-react";
 import { addScheduleSession, deleteScheduleSession, getSchedule, updateScheduleSession } from "@/services/scheduleService";
 import type { ScheduleSession } from "@/types";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Calendar } from "./ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 const formSchema = z.object({
+  date: z.string().refine((date) => !isNaN(Date.parse(date)), { message: "Please select a valid date."}),
   time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please use HH:MM format."),
   title: z.string().min(3, "Title must be at least 3 characters."),
   speaker: z.string().optional(),
@@ -67,6 +72,7 @@ export function ScheduleManager() {
   const form = useForm<SessionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      date: new Date().toISOString(),
       time: "",
       title: "",
       speaker: "",
@@ -92,6 +98,7 @@ export function ScheduleManager() {
       form.reset(editingSession);
     } else {
       form.reset({
+        date: new Date().toISOString(),
         time: "", title: "", speaker: "", venue: "", description: "", type: "talk", badge: "",
       });
     }
@@ -154,6 +161,40 @@ export function ScheduleManager() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name="date" render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(new Date(field.value), "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value ? new Date(field.value) : undefined}
+                          onSelect={(date) => field.onChange(date?.toISOString())}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}/>
                 <FormField control={form.control} name="time" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Time (HH:MM)</FormLabel>
@@ -230,6 +271,7 @@ export function ScheduleManager() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Date</TableHead>
               <TableHead>Time</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Venue</TableHead>
@@ -239,6 +281,7 @@ export function ScheduleManager() {
           <TableBody>
             {sessions.length > 0 ? sessions.map(session => (
               <TableRow key={session.id}>
+                <TableCell className="font-medium">{format(new Date(session.date), "PPP")}</TableCell>
                 <TableCell><div className="flex items-center gap-2 font-medium"><Clock className="h-4 w-4 text-muted-foreground"/>{session.time}</div></TableCell>
                 <TableCell>{session.title}</TableCell>
                 <TableCell>{session.venue}</TableCell>
@@ -253,7 +296,7 @@ export function ScheduleManager() {
               </TableRow>
             )) : (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">No sessions found. Add one to get started!</TableCell>
+                <TableCell colSpan={5} className="h-24 text-center">No sessions found. Add one to get started!</TableCell>
               </TableRow>
             )}
           </TableBody>
