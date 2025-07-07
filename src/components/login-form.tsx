@@ -20,11 +20,8 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { LoginSchema } from "@/types";
-import { useRouter } from "next/navigation";
-
 
 export function LoginForm() {
-  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
@@ -47,12 +44,8 @@ export function LoginForm() {
         title: "Login Successful",
         description: "Redirecting...",
       });
-      // The form itself now handles the redirect based on the role from the service
-      if (result.profile.role === 'admin') {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
-      }
+      // The redirect is now handled by the parent page component.
+      // This form's only job is to authenticate.
     } else {
       toast({
         title: "Login Failed",

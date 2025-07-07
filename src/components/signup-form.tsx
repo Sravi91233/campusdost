@@ -24,10 +24,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
 
 export function SignUpForm() {
-  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { signUp } = useAuth();
@@ -50,10 +48,10 @@ export function SignUpForm() {
     if (result.success) {
       toast({
         title: "Account Created",
-        description: "Welcome! You've been successfully signed up.",
+        description: "Welcome! Redirecting to your dashboard...",
       });
-      // The form itself now handles the redirect
-      router.push('/dashboard');
+      // The redirect is now handled by the parent page component.
+      // This form's only job is to sign up the user.
     } else {
       toast({
         title: "Sign Up Failed",
