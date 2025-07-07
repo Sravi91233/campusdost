@@ -11,7 +11,7 @@ export default function SignUpPage() {
   // or if we have a user and are about to be redirected by the AuthRouter.
   if (loading || userProfile) {
      return (
-      <main className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+      <main className="flex items-center justify-center min-h-screen bg-background p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </main>
     );
@@ -19,7 +19,7 @@ export default function SignUpPage() {
   
   // If not loading and no user exists, show the sign-up form.
   return (
-    <main className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+    <main className="flex items-center justify-center min-h-screen bg-background p-4">
       <SignUpForm />
     </main>
   );

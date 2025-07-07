@@ -11,7 +11,7 @@ export default function LoginPage() {
   // logged in (the AuthRouter will be redirecting them away shortly).
   if (loading || userProfile) {
     return (
-      <main className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+      <main className="flex items-center justify-center min-h-screen bg-background p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </main>
     );
@@ -19,7 +19,7 @@ export default function LoginPage() {
 
   // If we're not loading and there's no user, it's safe to show the form.
   return (
-    <main className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+    <main className="flex items-center justify-center min-h-screen bg-background p-4">
       <LoginForm />
     </main>
   );
