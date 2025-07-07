@@ -16,7 +16,7 @@ export async function getSchedule(): Promise<ScheduleSession[]> {
 export async function addScheduleSession(session: Omit<ScheduleSession, 'id'>) {
   try {
     const docRef = await addDoc(scheduleCollectionRef, session);
-    revalidatePath('/dashboard');
+    revalidatePath('/dashboard', 'layout');
     revalidatePath('/admin');
     return { success: true, id: docRef.id };
   } catch (error) {
@@ -29,7 +29,7 @@ export async function updateScheduleSession(id: string, session: Partial<Omit<Sc
   try {
     const sessionDoc = doc(db, 'schedule', id);
     await updateDoc(sessionDoc, session);
-    revalidatePath('/dashboard');
+    revalidatePath('/dashboard', 'layout');
     revalidatePath('/admin');
     return { success: true };
   } catch (error) {
@@ -42,7 +42,7 @@ export async function deleteScheduleSession(id: string) {
   try {
     const sessionDoc = doc(db, 'schedule', id);
     await deleteDoc(sessionDoc);
-    revalidatePath('/dashboard');
+    revalidatePath('/dashboard', 'layout');
     revalidatePath('/admin');
     return { success: true };
   } catch (error) {

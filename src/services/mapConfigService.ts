@@ -31,7 +31,7 @@ export async function rebuildVisibleLocationsCache() {
             console.log("No map boundaries set, clearing visible locations cache.");
             const visibleLocationsDocRef = doc(db, 'map-data', 'visible');
             await setDoc(visibleLocationsDocRef, { locations: [] });
-            revalidatePath('/dashboard');
+            revalidatePath('/dashboard', 'layout');
             return;
         }
 
@@ -45,7 +45,7 @@ export async function rebuildVisibleLocationsCache() {
         const visibleLocationsDocRef = doc(db, 'map-data', 'visible');
         await setDoc(visibleLocationsDocRef, { locations: visibleLocations });
 
-        revalidatePath('/dashboard');
+        revalidatePath('/dashboard', 'layout');
     } catch (error) {
         console.error("Error rebuilding visible locations cache: ", error);
     }

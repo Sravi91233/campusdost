@@ -76,6 +76,18 @@ export function AdminMapConfig() {
     setIsSaving(false);
   };
 
+  if (!GOOGLE_MAPS_API_KEY) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Google Maps API Key is Missing</AlertTitle>
+        <AlertDescription>
+          Please add your <code className="font-mono text-xs bg-muted p-1 rounded-sm">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to your <code className="font-mono text-xs bg-muted p-1 rounded-sm">.env</code> file.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   if (loadError) {
     return (
        <Alert variant="destructive">

@@ -33,6 +33,7 @@ export async function addLocation(location: Omit<MapLocation, 'id'>) {
     const docRef = await addDoc(locationsCollectionRef, location);
     await rebuildVisibleLocationsCache();
     revalidatePath('/admin');
+    revalidatePath('/dashboard', 'layout');
     return { success: true, id: docRef.id };
   } catch (error) {
     console.error("Error adding document: ", error);
@@ -46,6 +47,7 @@ export async function updateLocation(id: string, location: Partial<Omit<MapLocat
     await updateDoc(locationDoc, location);
     await rebuildVisibleLocationsCache();
     revalidatePath('/admin');
+    revalidatePath('/dashboard', 'layout');
     return { success: true };
   } catch (error) {
     console.error("Error updating document: ", error);
@@ -59,6 +61,7 @@ export async function deleteLocation(id: string) {
     await deleteDoc(locationDoc);
     await rebuildVisibleLocationsCache();
     revalidatePath('/admin');
+    revalidatePath('/dashboard', 'layout');
     return { success: true };
   } catch (error) {
     console.error("Error deleting document: ", error);
