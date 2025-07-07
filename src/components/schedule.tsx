@@ -66,8 +66,9 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
     if (!userProfile?.inductionDate) {
       return [];
     }
-    // The user's induction date is already in 'YYYY-MM-DD' format.
-    const userInductionDateString = userProfile.inductionDate;
+    // The user's induction date can be 'YYYY-MM-DD' or a full ISO string.
+    // We normalize it to 'YYYY-MM-DD' for comparison.
+    const userInductionDateString = userProfile.inductionDate.split('T')[0];
 
     // Filter sessions to only include those on the user's induction day.
     return scheduleData.filter(session => session.date === userInductionDateString);
@@ -76,9 +77,18 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
   const formattedInductionDate = useMemo(() => {
     if (userProfile?.inductionDate) {
       try {
-        // Parse the 'YYYY-MM-DD' string as a local date to prevent timezone shifts.
-        // Appending 'T00:00:00' makes `new Date()` parse it in the local timezone.
-        const localDate = new Date(userProfile.inductionDate + 'T00:00:00');
+        let dateToParse = userProfile.inductionDate;
+        // Handle both 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:mm:ss.sssZ' formats
+        // by parsing the ISO string directly if it contains a time component.
+        if (!dateToParse.includes('T')) {
+          // If it's just a date, append time to avoid timezone shifts on parsing.
+          dateToParse += 'T00:00:00';
+        }
+        const localDate = new Date(dateToParse);
+        // Check if the created date is valid before formatting
+        if (isNaN(localDate.getTime())) {
+          return "Invalid Date";
+        }
         return format(localDate, "PPP"); // e.g., "Jul 9, 2025"
       } catch (error) {
         console.error("Error formatting induction date:", error);
@@ -114,6 +124,9 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
   // This logic only runs if today is the actual induction day.
   const todayString = format(now, 'yyyy-MM-dd');
 
+  // Normalize user's induction date for today's check
+  const userInductionDayString = userProfile?.inductionDate ? userProfile.inductionDate.split('T')[0] : '';
+
   const updatedSchedule = studentSchedule.map(session => {
     let isPast = false;
     // Only determine past status if we are viewing today's schedule
@@ -130,7 +143,7 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
   });
 
   // If today is not the induction day, there is no "next" session.
-  if (userProfile?.inductionDate !== todayString) {
+  if (userInductionDayString !== todayString) {
     nextSession = null;
   }
 
@@ -149,7 +162,7 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
         ) : (
           <div className="space-y-6">
             {/* Only show the NextSessionCard if today is the induction day */}
-            {userProfile?.inductionDate === todayString && <NextSessionCard session={nextSession} />}
+            {userInductionDayString === todayString && <NextSessionCard session={nextSession} />}
             
             <Accordion type="single" collapsible className="w-full">
               {updatedSchedule.map((session, index) => (
