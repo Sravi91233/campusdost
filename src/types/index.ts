@@ -65,3 +65,11 @@ export interface Connection {
   status: 'pending' | 'connected';
   requestedBy: string;
 }
+
+export interface ChatMessage {
+  id: string;
+  text: string;
+  senderId: string;
+  // Firestore timestamps are objects, or can be null if just sent optimistically
+  timestamp: { seconds: number; nanoseconds: number; } | null;
+}

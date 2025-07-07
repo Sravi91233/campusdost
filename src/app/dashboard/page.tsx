@@ -8,74 +8,14 @@ import { getMapCorners } from "@/services/mapConfigService";
 import { Schedule } from "@/components/schedule";
 import { CampusMap } from "@/components/campus-map";
 import { Chatbot } from "@/components/chatbot";
-import { BuddyMatcher } from "@/components/buddy-matcher";
+import { BuddyFeatureWrapper } from "@/components/buddy-feature-wrapper";
 import { FeedbackForm } from "@/components/feedback-form";
 import { CampusDiscoveryChallenge } from "@/components/campus-discovery-challenge";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { Users, Bot, MessageSquare, Compass, Handshake, Loader2, BellRinging } from "lucide-react";
-import type { ScheduleSession, MapLocation, MapCorners, UserProfile, Connection } from "@/types";
-import { useAuth } from "@/context/AuthContext";
-import { getUsersByStream } from "@/services/userService";
-import { getConnectionsForUser } from "@/services/connectionService";
-import { ConnectionRequests } from "@/components/ConnectionRequests";
-
-
-// Wrapper component to handle client-side data fetching for buddy-related features
-function BuddyFeatureWrapper() {
-  const { userProfile } = useAuth();
-  const [buddies, setBuddies] = useState<UserProfile[]>([]);
-  const [connections, setConnections] = useState<Connection[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchData() {
-      if (userProfile) {
-        setIsLoading(true);
-        const [buddiesData, connectionsData] = await Promise.all([
-          getUsersByStream(userProfile.stream, userProfile.uid),
-          getConnectionsForUser(userProfile.uid)
-        ]);
-        setBuddies(buddiesData);
-        setConnections(connectionsData);
-        setIsLoading(false);
-      }
-    }
-    fetchData();
-  }, [userProfile]);
-
-  if (isLoading) {
-    return (
-       <div className="flex flex-col items-center justify-center h-40 gap-4 text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Finding students in your stream...</p>
-      </div>
-    );
-  }
-  
-  const potentialBuddies = buddies.filter(b => {
-    const conn = connections.find(c => c.participants.includes(b.uid));
-    return !conn || conn.status === 'pending';
-  });
-
-  return (
-    <div className='space-y-4'>
-      <ConnectionRequests 
-        initialConnections={connections} 
-        potentialBuddies={[...buddies, userProfile!]} // Pass all potential users for profile lookups
-        onUpdate={(updatedConnections) => setConnections(updatedConnections)}
-      />
-      <BuddyMatcher 
-        initialBuddies={potentialBuddies} 
-        initialConnections={connections}
-        onUpdate={(updatedConnections) => setConnections(updatedConnections)}
-      />
-    </div>
-  )
-}
-
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Users, Bot, MessageSquare, Compass, Handshake } from "lucide-react";
+import type { ScheduleSession, MapLocation, MapCorners } from "@/types";
 
 export default function DashboardPage() {
-  // Data fetching for non-user-specific content can remain here.
   const [scheduleData, setScheduleData] = useState<ScheduleSession[]>([]);
   const [mapLocations, setMapLocations] = useState<MapLocation[]>([]);
   const [mapCorners, setMapCorners] = useState<MapCorners | null>(null);

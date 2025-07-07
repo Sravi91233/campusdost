@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Check, X, Loader2, BellRinging } from 'lucide-react';
+import { Check, X, Loader2, BellRing } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { acceptConnectionRequest, declineOrCancelRequest } from '@/services/connectionService';
 import { Separator } from './ui/separator';
@@ -66,7 +66,7 @@ export function ConnectionRequests({ initialConnections, potentialBuddies, onUpd
   return (
     <div className='space-y-4'>
         <div className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 px-1"><BellRinging className="h-4 w-4 text-primary" /> Connection Requests</h3>
+            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 px-1"><BellRing className="h-4 w-4 text-primary" /> Connection Requests</h3>
             {incomingRequests.map(req => {
                 const requester = getRequesterProfile(req);
                 if (!requester) return null;
