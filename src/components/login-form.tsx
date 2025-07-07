@@ -44,9 +44,13 @@ export function LoginForm() {
     if (result.success) {
       toast({
         title: "Login Successful",
-        description: "Welcome back!",
+        description: "Redirecting...",
       });
-      router.push("/dashboard");
+      if (result.role === 'admin') {
+        router.push("/admin");
+      } else {
+        router.push("/dashboard");
+      }
     } else {
       toast({
         title: "Login Failed",

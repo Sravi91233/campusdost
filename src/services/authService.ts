@@ -9,6 +9,7 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { SignUpSchema } from '@/types';
 import type { z } from 'zod';
+import type { UserProfile } from '@/types';
 
 type SignUpData = z.infer<typeof SignUpSchema>;
 
@@ -17,13 +18,13 @@ export async function signUpUser(data: SignUpData) {
     const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
     const user = userCredential.user;
     
-    const userProfile = {
+    const userProfile: UserProfile = {
       uid: user.uid,
       email: data.email,
       name: data.name,
       registrationNo: data.registrationNo,
       inductionDate: data.inductionDate,
-      role: 'user' as const,
+      role: 'user', // Default role for new sign-ups
     };
 
     await setDoc(doc(db, 'users', user.uid), userProfile);
@@ -37,7 +38,14 @@ export async function signUpUser(data: SignUpData) {
 export async function loginUser(email: string, password: string) {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return { success: true, userId: userCredential.user.uid };
+    const user = userCredential.user;
+    const profileResult = await getUserProfile(user.uid);
+    
+    if (profileResult.success && profileResult.profile) {
+      return { success: true, role: profileResult.profile.role };
+    }
+    // Fallback if profile doesn't exist, though this shouldn't happen in a normal flow.
+    return { success: true, role: 'user' as const };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -56,7 +64,7 @@ export async function getUserProfile(uid: string) {
     try {
         const userDoc = await getDoc(doc(db, 'users', uid));
         if (userDoc.exists()) {
-            return { success: true, profile: userDoc.data() };
+            return { success: true, profile: userDoc.data() as UserProfile };
         } else {
             return { success: false, error: 'User profile not found.' };
         }

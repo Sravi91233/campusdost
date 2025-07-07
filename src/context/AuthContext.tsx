@@ -32,8 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(user);
         const profileResult = await getUserProfile(user.uid);
         if (profileResult.success && profileResult.profile) {
-            setUserProfile(profileResult.profile as UserProfile);
+            setUserProfile(profileResult.profile);
         } else {
+            // This case can happen if a user exists in Auth but not Firestore.
+            // For robustness, we could sign them out or create a default profile.
+            // For now, we'll leave the profile as null.
             setUserProfile(null);
         }
       } else {
@@ -48,6 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = { user, userProfile, loading };
 
+  // Only show the main loader on the initial app load.
+  // Child routes will handle their own loading states.
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
