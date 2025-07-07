@@ -7,9 +7,7 @@ import { getUsersByStream } from "@/services/userService";
 import { getConnectionsForUser } from "@/services/connectionService";
 import type { UserProfile, Connection } from "@/types";
 import { Loader2 } from "lucide-react";
-import { ConnectionRequests } from "@/components/ConnectionRequests";
 import { BuddyMatcher } from "@/components/buddy-matcher";
-import { ConnectedBuddies } from "@/components/connected-buddies";
 import { ChatDialog } from "@/components/chat-dialog";
 
 export function BuddyFeatureWrapper() {
@@ -58,22 +56,11 @@ export function BuddyFeatureWrapper() {
 
   return (
     <div className='space-y-4'>
-      <ConnectionRequests 
-        initialConnections={connections} 
-        potentialBuddies={allUsersForProfileLookup}
-        onUpdate={(updatedConnections) => setConnections(updatedConnections)}
-      />
-      
-      <ConnectedBuddies
+      <BuddyMatcher
+        potentialBuddies={buddies}
         connections={connections}
-        potentialBuddies={allUsersForProfileLookup}
+        onConnectionsUpdate={setConnections}
         onStartChat={setActiveChat}
-      />
-      
-      <BuddyMatcher 
-        initialBuddies={buddies} 
-        initialConnections={connections}
-        onUpdate={(updatedConnections) => setConnections(updatedConnections)}
       />
       
       {activeChat && userProfile && activeChatBuddyProfile && (

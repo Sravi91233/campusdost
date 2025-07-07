@@ -2,153 +2,228 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
-import { Handshake, Loader2, Clock, CheckCircle } from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import type { Connection, UserProfile } from "@/types";
 import { useAuth } from "@/context/AuthContext";
-import type { UserProfile, Connection } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { sendConnectionRequest, declineOrCancelRequest } from "@/services/connectionService";
+import { sendConnectionRequest, acceptConnectionRequest, declineOrCancelRequest } from "@/services/connectionService";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  Loader2,
+  Handshake,
+  Clock,
+  Check,
+  X,
+  BellRing,
+  Users,
+  MessageSquare,
+} from 'lucide-react';
+
 
 interface BuddyMatcherProps {
-  initialBuddies: UserProfile[];
-  initialConnections: Connection[];
-  onUpdate: (connections: Connection[]) => void;
+  potentialBuddies: UserProfile[];
+  connections: Connection[];
+  onConnectionsUpdate: (connections: Connection[]) => void;
+  onStartChat: (connection: Connection) => void;
 }
 
-type ConnectionStatus = 'not_connected' | 'pending_sent' | 'connected';
+type CategorizedBuddy = {
+  profile: UserProfile;
+  connection?: Connection;
+  status: 'incoming_request' | 'connected' | 'pending_sent' | 'not_connected';
+};
 
-export function BuddyMatcher({ initialBuddies, initialConnections, onUpdate }: BuddyMatcherProps) {
+export function BuddyMatcher({ potentialBuddies, connections, onConnectionsUpdate, onStartChat }: BuddyMatcherProps) {
   const { userProfile } = useAuth();
   const { toast } = useToast();
-  const [buddies] = useState<UserProfile[]>(initialBuddies);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const getConnectionStatus = (buddyId: string): { status: ConnectionStatus, connectionId: string | null } => {
-    if (!userProfile) return { status: 'not_connected', connectionId: null };
-    
-    const connection = initialConnections.find(c =>
-      c.participants.includes(userProfile.uid) && c.participants.includes(buddyId)
-    );
+  const categorizedBuddies = useMemo((): CategorizedBuddy[] => {
+    if (!userProfile) return [];
 
-    if (!connection) {
-      return { status: 'not_connected', connectionId: null };
-    }
+    return potentialBuddies.map(buddy => {
+      const connection = connections.find(c => c.participants.includes(buddy.uid));
+      
+      if (!connection) {
+        return { profile: buddy, status: 'not_connected' };
+      }
 
-    if (connection.status === 'connected') {
-      return { status: 'connected', connectionId: connection.id };
-    }
+      if (connection.status === 'connected') {
+        return { profile: buddy, connection, status: 'connected' };
+      }
 
-    // A pending request exists, but we only care about ones this user sent.
-    // Incoming requests are handled by the ConnectionRequests component.
-    if (connection.status === 'pending' && connection.requestedBy === userProfile.uid) {
-      return { status: 'pending_sent', connectionId: connection.id };
-    }
+      if (connection.status === 'pending') {
+        if (connection.requestedBy === userProfile.uid) {
+          return { profile: buddy, connection, status: 'pending_sent' };
+        } else {
+          return { profile: buddy, connection, status: 'incoming_request' };
+        }
+      }
 
-    // Buddy has a pending request with someone else, or an incoming one for us. Treat as not connected for this component's purpose.
-    return { status: 'not_connected', connectionId: null };
-  };
+      // Fallback, should not be reached
+      return { profile: buddy, status: 'not_connected' };
+    });
+  }, [potentialBuddies, connections, userProfile]);
+
+  const incomingRequests = useMemo(() => categorizedBuddies.filter(b => b.status === 'incoming_request'), [categorizedBuddies]);
+  const connectedBuddies = useMemo(() => categorizedBuddies.filter(b => b.status === 'connected'), [categorizedBuddies]);
+  const otherBuddies = useMemo(() => categorizedBuddies.filter(b => b.status === 'not_connected' || b.status === 'pending_sent'), [categorizedBuddies]);
+
 
   const handleConnect = async (buddy: UserProfile) => {
     if (!userProfile) return;
     setProcessingId(buddy.uid);
     const result = await sendConnectionRequest(userProfile.uid, buddy.uid);
     if (result.success && result.connection) {
-      onUpdate([...initialConnections, result.connection]);
+      onConnectionsUpdate([...connections, result.connection]);
       toast({ title: "Request Sent!", description: `Your connection request to ${buddy.name} has been sent.` });
     } else {
       toast({ title: "Error", description: result.error, variant: "destructive" });
     }
     setProcessingId(null);
   };
+
+  const handleAccept = async (connectionId: string) => {
+    setProcessingId(connectionId);
+    const result = await acceptConnectionRequest(connectionId);
+    if (result.success) {
+      onConnectionsUpdate(connections.map(c => c.id === connectionId ? { ...c, status: 'connected' } : c));
+      toast({ title: "Connection accepted!" });
+    } else {
+      toast({ title: "Error", description: result.error, variant: "destructive" });
+    }
+    setProcessingId(null);
+  };
+
+  const handleDeclineOrCancel = async (connectionId: string) => {
+    setProcessingId(connectionId);
+    const result = await declineOrCancelRequest(connectionId);
+    if (result.success) {
+      onConnectionsUpdate(connections.filter(c => c.id !== connectionId));
+      toast({ title: "Request Removed" });
+    } else {
+      toast({ title: "Error", description: result.error, variant: "destructive" });
+    }
+    setProcessingId(null);
+  };
   
-  const handleCancelRequest = async (connectionId: string, buddy: UserProfile) => {
-      setProcessingId(buddy.uid);
-      const result = await declineOrCancelRequest(connectionId);
-      if (result.success) {
-          onUpdate(initialConnections.filter(c => c.id !== connectionId));
-          toast({ title: "Request Cancelled" });
-      } else {
-          toast({ title: "Error", description: result.error, variant: "destructive" });
-      }
-      setProcessingId(null);
-  }
-
-  const buddiesToShow = useMemo(() => {
-    if (!userProfile) return [];
-    return buddies.filter(buddy => {
-      const { status } = getConnectionStatus(buddy.uid);
-      return status !== 'connected';
-    });
-  }, [buddies, initialConnections, userProfile]);
-
-
-  if (!userProfile) {
-     return (
-      <div className="flex flex-col items-center justify-center h-40 gap-4 text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Loading your profile...</p>
-      </div>
-    );
-  }
+  if (!userProfile) return null;
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Connect with students from the <span className="font-bold text-foreground">{userProfile?.stream || '...'}</span> stream.
-      </p>
-
-      <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-        {buddiesToShow.length > 0 ? (
-          buddiesToShow.map(buddy => {
-            const { status, connectionId } = getConnectionStatus(buddy.uid);
-            const isProcessing = processingId === buddy.uid;
-
-            // This component no longer shows connected or pending_received states,
-            // as those are handled elsewhere.
-            if (status === 'connected') return null;
-
-            let button;
-            switch (status) {
-              case 'pending_sent':
-                button = <Button size="sm" variant="outline" onClick={() => connectionId && handleCancelRequest(connectionId, buddy)} disabled={isProcessing}>
-                           {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : <><Clock className="h-4 w-4 mr-2"/> Sent</>}
-                         </Button>;
-                break;
-              default:
-                button = <Button size="sm" variant="default" onClick={() => handleConnect(buddy)} disabled={isProcessing}>
-                           {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : <><Handshake className="h-4 w-4 mr-2"/> Connect</>}
-                         </Button>;
-                break;
-            }
-
+    <div className="space-y-6">
+      {/* Incoming Requests Section */}
+      {incomingRequests.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 px-1"><BellRing className="h-4 w-4 text-primary" /> Connection Requests</h3>
+          {incomingRequests.map(({ profile, connection }) => {
+            if (!connection) return null;
+            const isProcessing = processingId === connection.id;
             return (
-              <Card key={buddy.uid} className="transition-all hover:bg-muted/50">
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-4">
-                    <Avatar>
-                      <AvatarImage src={`https://placehold.co/40x40.png`} alt={buddy.name} data-ai-hint="person face" />
-                      <AvatarFallback>{buddy.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-grow">
-                      <p className="font-semibold">{buddy.name}</p>
-                      <p className="text-xs text-muted-foreground">{buddy.registrationNo}</p>
-                    </div>
-                    {button}
+              <Card key={profile.uid}>
+                <CardContent className="p-3 flex items-center gap-4">
+                  <Avatar>
+                    <AvatarImage src={`https://placehold.co/40x40.png`} alt={profile.name} data-ai-hint="person face" />
+                    <AvatarFallback>{profile.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-grow">
+                    <p className="font-semibold">{profile.name}</p>
+                    <p className="text-sm text-muted-foreground">Wants to connect</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="icon" variant="outline" className="h-9 w-9 border-green-500 text-green-500 hover:bg-green-500/10 hover:text-green-600" onClick={() => handleAccept(connection.id)} disabled={isProcessing}>
+                      {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    </Button>
+                    <Button size="icon" variant="outline" className="h-9 w-9 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDeclineOrCancel(connection.id)} disabled={isProcessing}>
+                      {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            )
-          })
-        ) : (
-          <div className="flex flex-col items-center justify-center h-40 gap-2 text-center">
-             <p className="font-semibold">All Caught Up!</p>
-             <p className="text-sm text-muted-foreground">
-                There are no new students to connect with in your stream right now.
-             </p>
-          </div>
-        )}
+            );
+          })}
+           <Separator />
+        </div>
+      )}
+
+      {/* Connected Buddies Section */}
+      {connectedBuddies.length > 0 && (
+        <div className="space-y-3">
+            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 px-1"><Users className="h-4 w-4 text-primary" /> My Connections</h3>
+             <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                {connectedBuddies.map(({ profile, connection }) => {
+                    if (!connection) return null;
+                    return (
+                        <Card key={profile.uid} className="transition-all hover:bg-muted/50">
+                            <CardContent className="p-3 flex items-center gap-4">
+                                <Avatar>
+                                    <AvatarImage src={`https://placehold.co/40x40.png`} alt={profile.name} data-ai-hint="person face" />
+                                    <AvatarFallback>{profile.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-grow">
+                                    <p className="font-semibold">{profile.name}</p>
+                                    <p className="text-xs text-muted-foreground">{profile.registrationNo}</p>
+                                </div>
+                                <Button size="sm" variant="outline" onClick={() => onStartChat(connection)}>
+                                    <MessageSquare className="mr-2 h-4 w-4" /> Message
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    );
+                })}
+            </div>
+            <Separator />
+        </div>
+      )}
+
+      {/* Other Students Section */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 px-1">
+          Other Students in {userProfile.stream}
+        </h3>
+        <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+           {otherBuddies.length > 0 ? (
+            otherBuddies.map(({ profile, connection, status }) => {
+                const isProcessing = processingId === profile.uid || processingId === connection?.id;
+                let button;
+                switch (status) {
+                case 'pending_sent':
+                    button = <Button size="sm" variant="outline" onClick={() => connection && handleDeclineOrCancel(connection.id)} disabled={isProcessing}>
+                                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : <><Clock className="h-4 w-4 mr-2"/> Sent</>}
+                            </Button>;
+                    break;
+                case 'not_connected':
+                    button = <Button size="sm" variant="default" onClick={() => handleConnect(profile)} disabled={isProcessing}>
+                                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin"/> : <><Handshake className="h-4 w-4 mr-2"/> Connect</>}
+                            </Button>;
+                    break;
+                default:
+                    button = null;
+                }
+
+                return (
+                    <Card key={profile.uid} className="transition-all hover:bg-muted/50">
+                        <CardContent className="p-3 flex items-center gap-4">
+                        <Avatar>
+                            <AvatarImage src={`https://placehold.co/40x40.png`} alt={profile.name} data-ai-hint="person face" />
+                            <AvatarFallback>{profile.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-grow">
+                            <p className="font-semibold">{profile.name}</p>
+                            <p className="text-xs text-muted-foreground">{profile.registrationNo}</p>
+                        </div>
+                        {button}
+                        </CardContent>
+                    </Card>
+                )
+            })
+            ) : (
+                <div className="flex flex-col items-center justify-center h-24 gap-2 text-center text-sm text-muted-foreground">
+                    <p>No other students found in your stream right now.</p>
+                </div>
+            )}
+        </div>
       </div>
     </div>
   );
