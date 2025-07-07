@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/context/AuthContext';
+import { AuthRouter } from '@/components/auth-router';
 
 export const metadata: Metadata = {
   title: 'Campus Compass',
@@ -22,8 +23,10 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
-          {children}
-          <Toaster />
+          <AuthRouter>
+            {children}
+            <Toaster />
+          </AuthRouter>
         </AuthProvider>
       </body>
     </html>

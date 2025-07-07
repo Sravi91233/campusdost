@@ -1,29 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { SignUpForm } from "@/components/signup-form";
 import { Loader2 } from "lucide-react";
 
 export default function SignUpPage() {
-  const { user, userProfile, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    // This effect handles the case where a user is ALREADY logged in
-    // and navigates to the signup page. It should redirect them away.
-    if (!loading && user && userProfile) {
-      if (userProfile.role === 'admin') {
-        router.replace('/admin');
-      } else {
-        router.replace('/dashboard');
-      }
-    }
-  }, [user, userProfile, loading, router]);
+  const { user, loading } = useAuth();
   
   // Show a loader while the initial auth check is running,
-  // or if we have a user and are about to redirect.
+  // or if we have a user and are about to be redirected by the AuthRouter.
   if (loading || user) {
      return (
       <main className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">

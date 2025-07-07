@@ -1,29 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { LoginForm } from "@/components/login-form";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-  const { user, userProfile, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    // This effect handles the case where a user is ALREADY logged in
-    // and navigates to the login page. It should redirect them away.
-    if (!loading && user && userProfile) {
-      if (userProfile.role === 'admin') {
-        router.replace('/admin');
-      } else {
-        router.replace('/dashboard');
-      }
-    }
-  }, [user, userProfile, loading, router]);
-
-  // While the initial auth check is running, or if a user is already
-  // logged in and we are about to redirect, show a loader.
+  // Show a loader while the initial auth check is running, or if a user is
+  // logged in (the AuthRouter will be redirecting them away shortly).
   if (loading || user) {
     return (
       <main className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">

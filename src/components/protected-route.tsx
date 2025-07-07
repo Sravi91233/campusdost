@@ -1,23 +1,13 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const router = useRouter();
 
-  useEffect(() => {
-    // If loading is finished and there's no user, redirect them to the login page.
-    if (!loading && !user) {
-      router.replace("/login");
-    }
-  }, [user, loading, router]);
-
-  // While the authentication state is loading, or if there is no user,
-  // show a loading spinner. This prevents a flash of the dashboard content.
+  // While the initial auth check is happening, show a loader.
+  // The AuthRouter will handle redirection if the user is not authenticated.
   if (loading || !user) {
      return (
       <div className="flex items-center justify-center min-h-screen">
