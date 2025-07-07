@@ -17,7 +17,30 @@ import type { ScheduleSession } from '@/types';
 import { revalidatePath } from 'next/cache';
 
 /**
- * Fetches all schedule sessions from all dates using a collection group query.
+ * Normalizes a date string (from ISO or YYYY-MM-DD) to a YYYY-MM-DD string.
+ * @param dateStr The date string to normalize.
+ * @returns A string in YYYY-MM-DD format, or null if the input is invalid.
+ */
+function normalizeDateToYYYYMMDD(dateStr: string | undefined): string | null {
+  if (!dateStr) return null;
+  try {
+    // new Date() can parse both '2025-07-20' and '2025-07-20T18:30:00.000Z'
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return null;
+
+    // Use UTC methods to avoid timezone-related off-by-one day errors
+    const year = date.getUTCFullYear();
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+    const day = date.getUTCDate().toString().padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetches all schedule sessions from all dates, normalizing date formats.
  * This requires a Firestore index on the 'sessions' collection group.
  */
 export async function getSchedule(): Promise<ScheduleSession[]> {
@@ -25,11 +48,26 @@ export async function getSchedule(): Promise<ScheduleSession[]> {
   const q = query(sessionsCollectionGroup);
   const snapshot = await getDocs(q);
   
-  const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ScheduleSession));
+  const sessions = snapshot.docs
+    .map(doc => {
+      const data = doc.data();
+      const normalizedDate = normalizeDateToYYYYMMDD(data.date);
+      
+      if (!normalizedDate) {
+        console.warn(`Document ${doc.id} has an invalid or missing date, skipping.`);
+        return null;
+      }
+      
+      return { 
+        id: doc.id, 
+        ...data,
+        date: normalizedDate, // Override with the clean YYYY-MM-DD format
+      } as ScheduleSession;
+    })
+    .filter((session): session is ScheduleSession => session !== null);
 
-  // Sort on the server to avoid complex composite indexes and handle bad data.
+  // Sort on the server to handle bad time data gracefully.
   sessions.sort((a, b) => {
-    if (!a.date || !b.date) return 0;
     const dateComparison = a.date.localeCompare(b.date);
     if (dateComparison !== 0) return dateComparison;
     
@@ -46,8 +84,14 @@ export async function getSchedule(): Promise<ScheduleSession[]> {
  */
 export async function addScheduleSession(session: Omit<ScheduleSession, 'id'>) {
   try {
-    const sessionsCollectionRef = collection(db, 'schedule', session.date, 'sessions');
-    const docRef = await addDoc(sessionsCollectionRef, session);
+    const normalizedDate = normalizeDateToYYYYMMDD(session.date);
+    if (!normalizedDate) {
+      return { success: false, error: "Invalid date format provided." };
+    }
+    const sessionToSave = { ...session, date: normalizedDate };
+
+    const sessionsCollectionRef = collection(db, 'schedule', sessionToSave.date, 'sessions');
+    const docRef = await addDoc(sessionsCollectionRef, sessionToSave);
     revalidatePath('/dashboard', 'layout');
     revalidatePath('/admin');
     return { success: true, id: docRef.id };
@@ -63,21 +107,31 @@ export async function addScheduleSession(session: Omit<ScheduleSession, 'id'>) {
  */
 export async function updateScheduleSession(id: string, oldDate: string, sessionData: Omit<ScheduleSession, 'id'>) {
   try {
-    const newDate = sessionData.date;
+    const normalizedNewDate = normalizeDateToYYYYMMDD(sessionData.date);
+    if (!normalizedNewDate) {
+      return { success: false, error: "Invalid date format in update." };
+    }
+    // Since getSchedule() now normalizes, oldDate should already be clean.
+    // We normalize it again just in case of any edge cases.
+    const normalizedOldDate = normalizeDateToYYYYMMDD(oldDate);
+    if (!normalizedOldDate) {
+      return { success: false, error: "Invalid old date format in update." };
+    }
 
-    if (oldDate === newDate) {
+    const sessionToSave = { ...sessionData, date: normalizedNewDate };
+
+    if (normalizedOldDate === normalizedNewDate) {
       // Date hasn't changed, just update the document in place.
-      const sessionDoc = doc(db, 'schedule', oldDate, 'sessions', id);
-      await updateDoc(sessionDoc, sessionData);
+      const sessionDoc = doc(db, 'schedule', normalizedOldDate, 'sessions', id);
+      await updateDoc(sessionDoc, sessionToSave);
     } else {
       // Date has changed. Move the document: delete old, set new in a transaction.
-      const oldDocRef = doc(db, 'schedule', oldDate, 'sessions', id);
-      const newDocRef = doc(db, 'schedule', newDate, 'sessions', id);
+      const oldDocRef = doc(db, 'schedule', normalizedOldDate, 'sessions', id);
+      const newDocRef = doc(db, 'schedule', normalizedNewDate, 'sessions', id);
       
       await runTransaction(db, async (transaction) => {
-        // No need to read the old doc; `sessionData` is the complete new state.
         transaction.delete(oldDocRef);
-        transaction.set(newDocRef, sessionData);
+        transaction.set(newDocRef, sessionToSave);
       });
     }
 
@@ -95,6 +149,7 @@ export async function updateScheduleSession(id: string, oldDate: string, session
  */
 export async function deleteScheduleSession(id: string, date: string) {
   try {
+    // The date passed here should be normalized from the component state.
     const sessionDoc = doc(db, 'schedule', date, 'sessions', id);
     await deleteDoc(sessionDoc);
     revalidatePath('/dashboard', 'layout');
