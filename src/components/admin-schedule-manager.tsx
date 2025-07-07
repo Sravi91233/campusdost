@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -174,7 +175,7 @@ export function ScheduleManager() {
                               !field.value && "text-muted-foreground"
                             )}
                           >
-                            {field.value ? (
+                            {field.value && !isNaN(new Date(field.value).getTime()) ? (
                               format(new Date(field.value), "PPP")
                             ) : (
                               <span>Pick a date</span>
@@ -281,7 +282,15 @@ export function ScheduleManager() {
           <TableBody>
             {sessions.length > 0 ? sessions.map(session => (
               <TableRow key={session.id}>
-                <TableCell className="font-medium">{format(new Date(session.date), "PPP")}</TableCell>
+                <TableCell className="font-medium">
+                  {(() => {
+                    if (!session.date) return <span className="text-destructive">No Date</span>;
+                    const d = new Date(session.date);
+                    return isNaN(d.getTime())
+                      ? <span className="text-destructive">Invalid Date</span>
+                      : format(d, "PPP");
+                  })()}
+                </TableCell>
                 <TableCell><div className="flex items-center gap-2 font-medium"><Clock className="h-4 w-4 text-muted-foreground"/>{session.time}</div></TableCell>
                 <TableCell>{session.title}</TableCell>
                 <TableCell>{session.venue}</TableCell>

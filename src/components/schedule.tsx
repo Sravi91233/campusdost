@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ScheduleSession as Session } from "@/types";
@@ -62,11 +63,21 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
   const studentSchedule = useMemo(() => {
     if (!userProfile) return [];
     
-    const userInductionDate = new Date(userProfile.inductionDate).toDateString();
+    // Ensure the user's induction date is valid before proceeding.
+    const userInductionDateObj = new Date(userProfile.inductionDate);
+    if (isNaN(userInductionDateObj.getTime())) {
+      return []; // Return empty if the user profile has a bad date.
+    }
+    const userInductionDate = userInductionDateObj.toDateString();
 
     return scheduleData.filter(session => {
-      const sessionDate = new Date(session.date).toDateString();
-      return sessionDate === userInductionDate;
+      // Gracefully handle potentially invalid date strings from the database.
+      if (!session.date) return false;
+      const sessionDateObj = new Date(session.date);
+      if (isNaN(sessionDateObj.getTime())) {
+        return false; // Skip sessions with invalid dates
+      }
+      return sessionDateObj.toDateString() === userInductionDate;
     });
   }, [scheduleData, userProfile]);
 
