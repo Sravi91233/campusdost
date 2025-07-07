@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -15,6 +16,10 @@ export async function getSchedule(): Promise<ScheduleSession[]> {
 
   // Sort the results here on the server.
   sessions.sort((a, b) => {
+    // Gracefully handle sessions that might be missing a date or time.
+    if (!a.date || !a.time) return 1; // Move items without a date/time to the end.
+    if (!b.date || !b.time) return -1; // Keep items with a date/time at the start.
+
     const dateComparison = a.date.localeCompare(b.date);
     if (dateComparison !== 0) {
       return dateComparison;
