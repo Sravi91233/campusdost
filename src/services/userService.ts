@@ -14,13 +14,12 @@ const usersCollectionRef = collection(db, 'users');
  */
 export async function getUsersByStream(stream: string, currentUserId: string): Promise<UserProfile[]> {
   try {
-    // Create a query to find users in the same stream, but not the current user.
-    // We add a limit to avoid fetching thousands of users in a large system.
+    // Firestore does not support combining an equality filter ('==') with an inequality ('!=') on different fields.
+    // The correct approach is to fetch all users in the stream and then filter out the current user in code.
     const q = query(
       usersCollectionRef,
       where('stream', '==', stream),
-      where('uid', '!=', currentUserId),
-      limit(50) 
+      limit(50) // Limit to prevent fetching excessively large datasets.
     );
 
     const querySnapshot = await getDocs(q);
@@ -29,22 +28,24 @@ export async function getUsersByStream(stream: string, currentUserId: string): P
       return [];
     }
 
-    // Map over the documents and build a clean UserProfile array.
-    // This is crucial for security as it strips the password field from the data.
-    const users = querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      
-      const userProfile: UserProfile = {
-        uid: data.uid,
-        email: data.email,
-        name: data.name,
-        registrationNo: data.registrationNo,
-        inductionDate: data.inductionDate,
-        role: data.role,
-        stream: data.stream,
-      };
-      return userProfile;
-    });
+    // Map over the documents and build a clean UserProfile array, then filter.
+    // This is crucial for security as it strips any sensitive fields (like a password) from the data.
+    const users = querySnapshot.docs
+      .map(doc => {
+        const data = doc.data();
+        
+        const userProfile: UserProfile = {
+          uid: data.uid,
+          email: data.email,
+          name: data.name,
+          registrationNo: data.registrationNo,
+          inductionDate: data.inductionDate,
+          role: data.role,
+          stream: data.stream,
+        };
+        return userProfile;
+      })
+      .filter(user => user.uid !== currentUserId); // Exclude the current user from the list.
 
     return users;
 
