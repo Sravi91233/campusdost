@@ -24,6 +24,19 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const streams = [
+    "Computer Science Engineering",
+    "Electronics & Communication",
+    "Mechanical Engineering",
+    "Civil Engineering",
+    "Biotechnology",
+    "Business Administration",
+    "Design",
+    "Other"
+];
+
 
 export function SignUpForm() {
   const { toast } = useToast();
@@ -37,6 +50,7 @@ export function SignUpForm() {
       email: "",
       password: "",
       registrationNo: "",
+      stream: "",
     },
   });
 
@@ -95,6 +109,24 @@ export function SignUpForm() {
                 <FormItem>
                   <FormLabel>Registration Number</FormLabel>
                   <FormControl><Input placeholder="e.g. 1234567" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+            )}/>
+            <FormField control={form.control} name="stream" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Stream</FormLabel>
+                   <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your stream of study" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {streams.map(stream => (
+                        <SelectItem key={stream} value={stream}>{stream}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
             )}/>

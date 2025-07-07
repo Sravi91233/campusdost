@@ -66,6 +66,9 @@ export function UserNav() {
           Registration No: {userProfile.registrationNo}
         </div>
         <div className="px-2 py-1.5 text-xs text-muted-foreground">
+          Stream: <span className="font-semibold">{userProfile.stream}</span>
+        </div>
+        <div className="px-2 py-1.5 text-xs text-muted-foreground">
           Role: <span className="font-semibold capitalize">{userProfile.role}</span>
         </div>
         <DropdownMenuSeparator />

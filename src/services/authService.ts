@@ -70,6 +70,7 @@ export async function signUpUser(data: SignUpData): Promise<{ success: true, pro
       email: data.email,
       name: data.name,
       registrationNo: data.registrationNo,
+      stream: data.stream,
       inductionDate: normalizedDate, // Use the normalized date
       role: 'user' as const, // Default role for new sign-ups
       password: data.password, // Storing password in plaintext
@@ -111,6 +112,7 @@ export async function loginUser(email: string, passwordAttempt: string): Promise
       registrationNo: userData.registrationNo,
       inductionDate: userData.inductionDate,
       role: userData.role,
+      stream: userData.stream,
     };
 
     return { success: true, profile: safeProfile };
@@ -133,6 +135,7 @@ export async function getUserProfile(uid: string): Promise<{ success: true, prof
               registrationNo: userData.registrationNo,
               inductionDate: userData.inductionDate,
               role: userData.role,
+              stream: userData.stream,
             };
             return { success: true, profile: safeProfile };
         } else {
