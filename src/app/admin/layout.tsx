@@ -1,8 +1,7 @@
-import { Shield, User } from "lucide-react";
+import { Shield } from "lucide-react";
 import Link from "next/link";
 import { AdminProtectedRoute } from "@/components/admin-protected-route";
-import { LogoutButton } from "@/components/logout-button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserNav } from "@/components/user-nav";
 
 export default function AdminLayout({
   children,
@@ -19,13 +18,7 @@ export default function AdminLayout({
               <span className="font-bold text-xl font-headline">Admin Panel</span>
             </Link>
             <div className="flex items-center gap-4">
-              <LogoutButton />
-              <Avatar>
-                <AvatarImage src="https://placehold.co/40x40.png" alt="Admin" />
-                <AvatarFallback>
-                  <User />
-                </AvatarFallback>
-              </Avatar>
+              <UserNav />
             </div>
           </div>
         </header>
