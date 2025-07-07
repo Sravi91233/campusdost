@@ -1,80 +1,76 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Handshake } from 'lucide-react';
+import { Handshake, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-
-type Buddy = {
-  name: string;
-  avatar: string;
-  interests: string[];
-};
-
-const allInterests = ["Tech", "Design", "Sports", "Music", "Literature", "Gaming"];
-
-const allBuddies: Buddy[] = [
-  { name: "Alex Ray", avatar: "https://placehold.co/40x40.png", interests: ["Tech", "Gaming"] },
-  { name: "Jordan Lee", avatar: "https://placehold.co/40x40.png", interests: ["Sports", "Music"] },
-  { name: "Casey Kim", avatar: "https://placehold.co/40x40.png", interests: ["Design", "Literature"] },
-  { name: "Morgan Pat", avatar: "https://placehold.co/40x40.png", interests: ["Tech", "Literature"] },
-  { name: "Taylor B.", avatar: "https://placehold.co/40x40.png", interests: ["Music", "Gaming", "Design"] },
-  { name: "Sam Jones", avatar: "https://placehold.co/40x40.png", interests: ["Sports", "Tech"] },
-];
+import { useAuth } from "@/context/AuthContext";
+import { getUsersByStream } from "@/services/userService";
+import type { UserProfile } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 
 export function BuddyMatcher() {
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const { userProfile } = useAuth();
+  const { toast } = useToast();
+  const [buddies, setBuddies] = useState<UserProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredBuddies = useMemo(() => {
-    if (selectedInterests.length === 0) {
-      return [];
+  useEffect(() => {
+    // Only fetch if we have the necessary user info
+    if (userProfile?.stream && userProfile?.uid) {
+      const fetchBuddies = async () => {
+        setIsLoading(true);
+        const fetchedBuddies = await getUsersByStream(userProfile.stream, userProfile.uid);
+        setBuddies(fetchedBuddies);
+        setIsLoading(false);
+      };
+      fetchBuddies();
+    } else {
+        // If there's no user profile, we're not loading anything.
+        setIsLoading(false);
     }
-    return allBuddies.filter(buddy =>
-      selectedInterests.every(interest => buddy.interests.includes(interest))
-    ).slice(0, 3); // Limit to 3 matches
-  }, [selectedInterests]);
+  }, [userProfile]);
+
+  const handleConnect = (buddyId: string) => {
+    // Phase 2 will implement connection logic.
+    toast({
+      title: "Coming Soon!",
+      description: "The ability to connect and chat is in development.",
+    });
+    console.log(`Connection request to ${buddyId} initiated.`);
+  };
+  
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-40 gap-4 text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Finding students in your stream...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div>
-        <p className="text-sm text-muted-foreground mb-2">Select your interests to find like-minded people!</p>
-        <ToggleGroup
-          type="multiple"
-          variant="outline"
-          value={selectedInterests}
-          onValueChange={(value) => setSelectedInterests(value)}
-          className="flex-wrap justify-start"
-        >
-          {allInterests.map(interest => (
-            <ToggleGroupItem key={interest} value={interest} aria-label={`Toggle ${interest}`} className="m-1">
-              {interest}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Students from the <span className="font-bold text-foreground">{userProfile?.stream || '...'}</span> stream.
+      </p>
 
-      <div className="space-y-3">
-        {filteredBuddies.length > 0 ? (
-          filteredBuddies.map(buddy => (
-            <Card key={buddy.name} className="transition-all hover:bg-muted">
+      <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+        {buddies.length > 0 ? (
+          buddies.map(buddy => (
+            <Card key={buddy.uid} className="transition-all hover:bg-muted/50">
               <CardContent className="p-3">
                 <div className="flex items-center gap-4">
                   <Avatar>
-                    <AvatarImage src={buddy.avatar} alt={buddy.name} data-ai-hint="person face" />
+                    <AvatarImage src={`https://placehold.co/40x40.png`} alt={buddy.name} data-ai-hint="person face" />
                     <AvatarFallback>{buddy.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                   </Avatar>
                   <div className="flex-grow">
                     <p className="font-semibold">{buddy.name}</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {buddy.interests.map(interest => (
-                        <Badge key={interest} variant="secondary" className="text-xs">{interest}</Badge>
-                      ))}
-                    </div>
+                    <p className="text-xs text-muted-foreground">{buddy.registrationNo}</p>
                   </div>
-                  <Button size="sm" variant="ghost">
+                  <Button size="sm" variant="outline" onClick={() => handleConnect(buddy.uid)}>
                     <Handshake className="h-4 w-4 mr-2"/> Connect
                   </Button>
                 </div>
@@ -82,9 +78,12 @@ export function BuddyMatcher() {
             </Card>
           ))
         ) : (
-          selectedInterests.length > 0 && (
-            <p className="text-sm text-center text-muted-foreground pt-4">No exact matches found. Try selecting fewer interests.</p>
-          )
+          <div className="flex flex-col items-center justify-center h-40 gap-2 text-center">
+             <p className="font-semibold">You're a pioneer!</p>
+             <p className="text-sm text-muted-foreground">
+                Looks like you're one of the first here from your stream. Check back later as more students join.
+             </p>
+          </div>
         )}
       </div>
     </div>
