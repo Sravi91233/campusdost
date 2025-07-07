@@ -13,6 +13,43 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
 import { format } from "date-fns";
 
+/**
+ * Takes a date string (either 'YYYY-MM-DD' or a full ISO string like '...Z')
+ * and returns the UTC calendar date in 'YYYY-MM-DD' format.
+ * This is crucial for correctly identifying the date regardless of time or timezone.
+ * e.g., '2025-07-20T23:59:59Z' (almost July 21st) correctly returns '2025-07-20'.
+ */
+function getUTCDateString(dateStr: string | undefined): string | null {
+  if (!dateStr) return null;
+  try {
+    // For 'YYYY-MM-DD', new Date() parses it as UTC midnight.
+    // For '...Z', new Date() parses it as the correct moment in time.
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return null;
+
+    const year = date.getUTCFullYear();
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+    const day = date.getUTCDate().toString().padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Takes a 'YYYY-MM-DD' string and returns a Date object suitable for display
+ * in the user's local timezone without shifting the calendar day.
+ */
+function getDisplayDate(utcDateString: string | null): Date | null {
+    if (!utcDateString) return null;
+    // By splitting and creating a new date, we force it to be interpreted in local time.
+    // E.g., '2025-07-20' -> new Date(2025, 6, 20) -> July 20th local time.
+    const parts = utcDateString.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
 const SessionIcon = ({ type }: { type: Session["type"] }) => {
   switch (type) {
     case "talk": return <Mic className="h-5 w-5 text-accent-foreground" />;
@@ -61,38 +98,19 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
     return () => clearInterval(timer);
   }, []);
 
+  const userInductionDateString = useMemo(() => getUTCDateString(userProfile?.inductionDate), [userProfile]);
+
   const studentSchedule = useMemo(() => {
-    if (!userProfile?.inductionDate) {
-      return [];
-    }
-    // Always take just the date part (YYYY-MM-DD) to ensure correct filtering
-    const userInductionDateString = userProfile.inductionDate.split('T')[0];
+    if (!userInductionDateString) return [];
     return scheduleData.filter(session => session.date === userInductionDateString);
-  }, [scheduleData, userProfile]);
+  }, [scheduleData, userInductionDateString]);
   
   const formattedInductionDate = useMemo(() => {
-    if (userProfile?.inductionDate) {
-      try {
-        // ALWAYS take the date part of the string, regardless of format.
-        // This handles both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss.sssZ".
-        const datePart = userProfile.inductionDate.split('T')[0];
-        
-        // Append a fixed time to make `new Date()` parse it as a LOCAL date.
-        // This is the crucial step to prevent timezone shifts from UTC dates.
-        const localDate = new Date(`${datePart}T00:00:00`);
+    const displayDate = getDisplayDate(userInductionDateString);
+    if (!displayDate) return userInductionDateString ? "Invalid Date" : null;
+    return format(displayDate, "PPP");
+  }, [userInductionDateString]);
 
-        if (isNaN(localDate.getTime())) {
-          return "Invalid Date";
-        }
-
-        return format(localDate, "PPP"); // e.g., "Jul 9, 2025"
-      } catch (error) {
-        console.error("Error formatting induction date:", error);
-        return "Invalid Date";
-      }
-    }
-    return null;
-  }, [userProfile]);
 
   if (authLoading || !now) {
     // Show a comprehensive skeleton UI while auth or date is loading
@@ -119,9 +137,6 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
   let nextSession: Session | null = null;
   const todayString = format(now, 'yyyy-MM-dd');
 
-  // Normalize user's induction date for today's check
-  const userInductionDayString = userProfile?.inductionDate ? userProfile.inductionDate.split('T')[0] : '';
-
   const updatedSchedule = studentSchedule.map(session => {
     let isPast = false;
     // Only determine past status if we are viewing today's schedule
@@ -137,8 +152,8 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
     return { ...session, isPast };
   });
 
-  // If today is not the induction day, there is no "next" session.
-  if (userInductionDayString !== todayString) {
+  // If today's local date doesn't match the user's induction date, there is no "next" session.
+  if (userInductionDateString !== todayString) {
     nextSession = null;
   }
 
@@ -157,7 +172,7 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
         ) : (
           <div className="space-y-6">
             {/* Only show the NextSessionCard if today is the induction day */}
-            {userInductionDayString === todayString && <NextSessionCard session={nextSession} />}
+            {userInductionDateString === todayString && <NextSessionCard session={nextSession} />}
             
             <Accordion type="single" collapsible className="w-full">
               {updatedSchedule.map((session, index) => (
