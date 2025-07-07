@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { signUpUser } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -28,7 +27,6 @@ import { format } from "date-fns";
 
 export function SignUpForm() {
   const { toast } = useToast();
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof SignUpSchema>>({
@@ -51,7 +49,8 @@ export function SignUpForm() {
         title: "Account Created",
         description: "Welcome! You've been successfully signed up.",
       });
-      router.push("/dashboard");
+      // The redirection is now handled by the parent signup page,
+      // which waits for the AuthContext to update.
     } else {
       toast({
         title: "Sign Up Failed",

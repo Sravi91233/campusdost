@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { loginUser } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -25,7 +24,6 @@ import { LoginSchema } from "@/types";
 
 export function LoginForm() {
   const { toast } = useToast();
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof LoginSchema>>({
@@ -46,11 +44,8 @@ export function LoginForm() {
         title: "Login Successful",
         description: "Redirecting...",
       });
-      if (result.role === 'admin') {
-        router.push("/admin");
-      } else {
-        router.push("/dashboard");
-      }
+      // The redirection is now handled by the parent login page,
+      // which waits for the AuthContext to update.
     } else {
       toast({
         title: "Login Failed",
