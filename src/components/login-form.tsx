@@ -39,7 +39,7 @@ export function LoginForm() {
 
   async function onSubmit(values: z.infer<typeof LoginSchema>) {
     setIsLoading(true);
-    const result = await login(values);
+    const result = await login(values.email, values.password);
     setIsLoading(false);
 
     if (result.success) {
@@ -47,6 +47,7 @@ export function LoginForm() {
         title: "Login Successful",
         description: "Redirecting...",
       });
+      // The form itself now handles the redirect based on the role from the service
       if (result.profile.role === 'admin') {
         router.push('/admin');
       } else {

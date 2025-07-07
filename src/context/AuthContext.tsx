@@ -11,7 +11,7 @@ type AuthContextType = {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean; // This is ONLY for the initial auth state check
-  login: (data: z.infer<TLogin>) => ReturnType<typeof serviceLogin>;
+  login: (email: string, password: string) => ReturnType<typeof serviceLogin>;
   signUp: (data: z.infer<TSignUp>) => ReturnType<typeof serviceSignUp>;
 };
 
@@ -30,6 +30,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // This effect runs once on mount to check the current auth state
+  // and set up a listener for future changes.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -39,8 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (profileResult.success && profileResult.profile) {
           setUserProfile(profileResult.profile);
         } else {
-          // This case should ideally not happen if profiles are created on sign-up.
-          // For safety, we clear the profile and log the user out.
+          // Profile doesn't exist or failed to load, sign out for safety
           setUserProfile(null);
           auth.signOut();
         }
@@ -49,7 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setUserProfile(null);
       }
-      // The initial check is complete.
       setLoading(false);
     });
 
@@ -57,21 +57,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  // These functions just call the service. onAuthStateChanged will update the context state.
-  const login = useCallback(async (data: z.infer<TLogin>) => {
-    return serviceLogin(data.email, data.password);
+  // The login function now calls the service and, upon success,
+  // directly updates the context's state. This is crucial.
+  const login = useCallback(async (email: string, password: string) => {
+    const result = await serviceLogin(email, password);
+    if (result.success) {
+      setUser(result.user);
+      setUserProfile(result.profile);
+    }
+    return result;
   }, []);
 
+  // The sign-up function does the same for new users.
   const signUp = useCallback(async (data: z.infer<TSignUp>) => {
-    return serviceSignUp(data);
+    const result = await serviceSignUp(data);
+    if (result.success) {
+      setUser(result.user);
+      setUserProfile(result.profile);
+    }
+    return result;
   }, []);
-
 
   const value = { user, userProfile, loading, login, signUp };
 
-  // The provider ALWAYS renders children. This prevents the entire UI tree
-  // from being unmounted during login, which was the cause of the infinite loop.
-  // Page components will use the `loading` and `user` values from the context to decide what to render.
   return (
     <AuthContext.Provider value={value}>
       {children}

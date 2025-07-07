@@ -52,6 +52,7 @@ export function SignUpForm() {
         title: "Account Created",
         description: "Welcome! You've been successfully signed up.",
       });
+      // The form itself now handles the redirect
       router.push('/dashboard');
     } else {
       toast({

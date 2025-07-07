@@ -14,7 +14,8 @@ import type { UserProfile } from '@/types';
 
 type SignUpData = z.infer<typeof SignUpSchema>;
 
-export async function signUpUser(data: SignUpData) {
+// The return type now includes the profile on success
+export async function signUpUser(data: SignUpData): Promise<{ success: true, user: User, profile: UserProfile } | { success: false, error: string }> {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
     const user = userCredential.user;
@@ -36,6 +37,7 @@ export async function signUpUser(data: SignUpData) {
   }
 }
 
+// This function is now fully atomic: it authenticates AND gets the profile.
 export async function loginUser(email: string, password: string): Promise<{ success: true; user: User; profile: UserProfile } | { success: false; error: string; }> {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -46,11 +48,24 @@ export async function loginUser(email: string, password: string): Promise<{ succ
       return { success: true, user, profile: profileResult.profile };
     }
     
-    await signOut(auth); // Sign out if profile is missing
+    // If the profile doesn't exist, something is wrong. Sign out for safety.
+    await signOut(auth);
     return { success: false, error: 'User profile not found.' };
 
   } catch (error: any) {
-    return { success: false, error: error.message };
+    // Convert known Firebase auth errors to friendlier messages
+    let friendlyMessage = "An unexpected error occurred.";
+    switch (error.code) {
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        friendlyMessage = 'Invalid email or password.';
+        break;
+      case 'auth/invalid-email':
+        friendlyMessage = 'Please enter a valid email address.';
+        break;
+    }
+    return { success: false, error: friendlyMessage };
   }
 }
 
@@ -63,7 +78,7 @@ export async function logoutUser() {
   }
 }
 
-export async function getUserProfile(uid: string) {
+export async function getUserProfile(uid: string): Promise<{ success: true, profile: UserProfile } | { success: false, error: string}> {
     try {
         const userDoc = await getDoc(doc(db, 'users', uid));
         if (userDoc.exists()) {
