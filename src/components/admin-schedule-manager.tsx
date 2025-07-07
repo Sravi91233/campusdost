@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 const formSchema = z.object({
-  date: z.string().refine((date) => !isNaN(Date.parse(date)), { message: "Please select a valid date."}),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Please select a valid date."}),
   time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please use HH:MM format."),
   title: z.string().min(3, "Title must be at least 3 characters."),
   speaker: z.string().optional(),
@@ -74,7 +74,7 @@ export function ScheduleManager() {
   const form = useForm<SessionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      date: new Date().toISOString(),
+      date: format(new Date(), 'yyyy-MM-dd'),
       time: "",
       title: "",
       speaker: "",
@@ -102,7 +102,7 @@ export function ScheduleManager() {
       form.reset(editingSession);
     } else {
       form.reset({
-        date: selectedDate ? selectedDate.toISOString() : new Date().toISOString(),
+        date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         time: "", title: "", speaker: "", venue: "", description: "", type: "talk", badge: "",
       });
     }
@@ -149,18 +149,21 @@ export function ScheduleManager() {
   
   const filteredSessions = useMemo(() => {
     if (!selectedDate) return [];
+    const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
     return sessions
-      .filter(session => {
-        if (!session.date) return false;
-        const sessionDate = new Date(session.date);
-        if (isNaN(sessionDate.getTime())) return false;
-        return sessionDate.toDateString() === selectedDate.toDateString();
-      })
+      .filter(session => session.date === selectedDateString)
       .sort((a, b) => a.time.localeCompare(b.time));
   }, [sessions, selectedDate]);
   
   const daysWithEvents = useMemo(() => {
-    return sessions.map(session => new Date(session.date));
+    // Gracefully handle invalid date strings before parsing
+    return sessions.map(session => {
+        try {
+            return new Date(session.date + 'T00:00:00');
+        } catch (e) {
+            return null;
+        }
+    }).filter(date => date !== null) as Date[];
   }, [sessions]);
 
 
@@ -191,8 +194,8 @@ export function ScheduleManager() {
                               !field.value && "text-muted-foreground"
                             )}
                           >
-                            {field.value && !isNaN(new Date(field.value).getTime()) ? (
-                              format(new Date(field.value), "PPP")
+                            {field.value ? (
+                              format(new Date(field.value + 'T00:00:00'), "PPP")
                             ) : (
                               <span>Pick a date</span>
                             )}
@@ -203,8 +206,8 @@ export function ScheduleManager() {
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
-                          selected={field.value ? new Date(field.value) : undefined}
-                          onSelect={(date) => field.onChange(date?.toISOString())}
+                          selected={field.value ? new Date(field.value + 'T00:00:00') : undefined}
+                          onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : undefined)}
                           initialFocus
                         />
                       </PopoverContent>

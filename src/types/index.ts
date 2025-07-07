@@ -11,7 +11,7 @@ export const SignUpSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
   registrationNo: z.string().min(5, { message: 'Registration number is required.' }),
-  inductionDate: z.string().refine((date) => !isNaN(Date.parse(date)), { message: "Please select a valid date."}),
+  inductionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Please select a valid date."}),
   autocomplete: z.string().optional(),
 });
 
@@ -22,13 +22,13 @@ export type UserProfile = {
   email: string;
   name: string;
   registrationNo: string;
-  inductionDate: string;
+  inductionDate: string; // Stored as 'YYYY-MM-DD'
   role: 'user' | 'admin';
 };
 
 export interface ScheduleSession {
   id: string;
-  date: string;
+  date: string; // Stored as 'YYYY-MM-DD'
   time: string;
   title: string;
   speaker?: string;

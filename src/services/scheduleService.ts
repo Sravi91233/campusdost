@@ -17,13 +17,15 @@ export async function getSchedule(): Promise<ScheduleSession[]> {
   // Sort the results here on the server.
   sessions.sort((a, b) => {
     // Gracefully handle sessions that might be missing a date or time.
-    if (!a.date || !a.time) return 1; // Move items without a date/time to the end.
-    if (!b.date || !b.time) return -1; // Keep items with a date/time at the start.
+    if (!a.date || !a.time) return 1;
+    if (!b.date || !b.time) return -1;
 
+    // Dates are 'YYYY-MM-DD' strings, so a standard string comparison works perfectly.
     const dateComparison = a.date.localeCompare(b.date);
     if (dateComparison !== 0) {
       return dateComparison;
     }
+    // If dates are the same, sort by time.
     return a.time.localeCompare(b.time);
   });
 

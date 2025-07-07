@@ -62,38 +62,26 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
   }, []);
 
   const studentSchedule = useMemo(() => {
+    // Wait until the user profile is loaded.
     if (!userProfile?.inductionDate) {
       return [];
     }
+    // The user's induction date is already in 'YYYY-MM-DD' format.
+    const userInductionDateString = userProfile.inductionDate;
 
-    const userInductionDateObj = new Date(userProfile.inductionDate);
-    if (isNaN(userInductionDateObj.getTime())) {
-      return []; // Invalid induction date on profile
-    }
-    
-    // Get the UTC date string 'YYYY-MM-DD'
-    const userInductionDateString = userInductionDateObj.toISOString().split('T')[0];
-
-    return scheduleData.filter(session => {
-      if (!session.date) {
-        return false;
-      }
-      const sessionDateObj = new Date(session.date);
-      if (isNaN(sessionDateObj.getTime())) {
-        return false; // Skip sessions with invalid dates
-      }
-      
-      const sessionDateString = sessionDateObj.toISOString().split('T')[0];
-      
-      return sessionDateString === userInductionDateString;
-    });
+    // Filter sessions to only include those on the user's induction day.
+    return scheduleData.filter(session => session.date === userInductionDateString);
   }, [scheduleData, userProfile]);
   
   const formattedInductionDate = useMemo(() => {
     if (userProfile?.inductionDate) {
       try {
-        return format(new Date(userProfile.inductionDate), "PPP");
+        // Parse the 'YYYY-MM-DD' string as a local date to prevent timezone shifts.
+        // Appending 'T00:00:00' makes `new Date()` parse it in the local timezone.
+        const localDate = new Date(userProfile.inductionDate + 'T00:00:00');
+        return format(localDate, "PPP"); // e.g., "Jul 9, 2025"
       } catch (error) {
+        console.error("Error formatting induction date:", error);
         return "Invalid Date";
       }
     }
@@ -123,17 +111,29 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
   }
   
   let nextSession: Session | null = null;
-  const updatedSchedule = studentSchedule.map(session => {
-    const [hours, minutes] = session.time.split(':').map(Number);
-    const sessionTime = new Date(now);
-    sessionTime.setHours(hours, minutes, 0, 0);
+  // This logic only runs if today is the actual induction day.
+  const todayString = format(now, 'yyyy-MM-dd');
 
-    const isPast = now.getTime() > sessionTime.getTime();
-    if (!isPast && !nextSession) {
-      nextSession = session;
+  const updatedSchedule = studentSchedule.map(session => {
+    let isPast = false;
+    // Only determine past status if we are viewing today's schedule
+    if (session.date === todayString) {
+      const [hours, minutes] = session.time.split(':').map(Number);
+      const sessionTime = new Date(now);
+      sessionTime.setHours(hours, minutes, 0, 0);
+      isPast = now.getTime() > sessionTime.getTime();
+      if (!isPast && !nextSession) {
+        nextSession = session;
+      }
     }
     return { ...session, isPast };
   });
+
+  // If today is not the induction day, there is no "next" session.
+  if (userProfile?.inductionDate !== todayString) {
+    nextSession = null;
+  }
+
 
   return (
      <Card>
@@ -148,7 +148,9 @@ export function Schedule({ scheduleData }: { scheduleData: Session[] }) {
           <p className="text-muted-foreground text-center p-8">No induction sessions scheduled for your selected date. Please check with the administration.</p>
         ) : (
           <div className="space-y-6">
-            <NextSessionCard session={nextSession} />
+            {/* Only show the NextSessionCard if today is the induction day */}
+            {userProfile?.inductionDate === todayString && <NextSessionCard session={nextSession} />}
+            
             <Accordion type="single" collapsible className="w-full">
               {updatedSchedule.map((session, index) => (
                 <AccordionItem key={session.id || index} value={`item-${index}`} className={session.isPast ? "opacity-60" : ""}>

@@ -112,7 +112,7 @@ export function SignUpForm() {
                         )}
                       >
                         {field.value ? (
-                          format(new Date(field.value), "PPP")
+                          format(new Date(field.value + 'T00:00:00'), "PPP")
                         ) : (
                           <span>Pick a date</span>
                         )}
@@ -123,8 +123,8 @@ export function SignUpForm() {
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={field.value ? new Date(field.value) : undefined}
-                      onSelect={(date) => field.onChange(date?.toISOString())}
+                      selected={field.value ? new Date(field.value + 'T00:00:00') : undefined}
+                      onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : undefined)}
                       disabled={(date) => date < new Date("1900-01-01")}
                       initialFocus
                     />
