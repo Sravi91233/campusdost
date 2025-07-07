@@ -10,7 +10,7 @@ import { User, Bot, Loader2, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Message = {
-  id: number;
+  id: string; // Switched to string for UUID
   role: 'user' | 'assistant';
   text: string;
   isOptimistic?: boolean;
@@ -22,7 +22,7 @@ export function Chatbot() {
     messages,
     (state: Message[], newMessage: string) => [
       ...state,
-      { id: Date.now(), role: 'user', text: newMessage, isOptimistic: true },
+      { id: crypto.randomUUID(), role: 'user', text: newMessage, isOptimistic: true },
     ]
   );
   const [isLoading, setIsLoading] = useState(false);
@@ -50,15 +50,15 @@ export function Chatbot() {
       const { response } = await chatbotAssistant({ query });
       setMessages(prev => [
         ...prev,
-        { id: Date.now(), role: 'user', text: query },
-        { id: Date.now() + 1, role: 'assistant', text: response }
+        { id: crypto.randomUUID(), role: 'user', text: query },
+        { id: crypto.randomUUID(), role: 'assistant', text: response }
       ]);
     } catch (error) {
       console.error("Chatbot error:", error);
       setMessages(prev => [
         ...prev,
-        { id: Date.now(), role: 'user', text: query },
-        { id: Date.now() + 1, role: 'assistant', text: "Sorry, I'm having trouble connecting. Please try again later." }
+        { id: crypto.randomUUID(), role: 'user', text: query },
+        { id: crypto.randomUUID(), role: 'assistant', text: "Sorry, I'm having trouble connecting. Please try again later." }
       ]);
     } finally {
       setIsLoading(false);
