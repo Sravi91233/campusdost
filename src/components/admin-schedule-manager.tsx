@@ -119,10 +119,10 @@ export function ScheduleManager() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    const result = await deleteScheduleSession(id);
+  const handleDelete = async (session: ScheduleSession) => {
+    const result = await deleteScheduleSession(session.id, session.date);
     if (result.success) {
-      setSessions(sessions.filter(s => s.id !== id));
+      setSessions(sessions.filter(s => s.id !== session.id));
       toast({ title: "Success", description: "Session deleted successfully." });
     } else {
       toast({ title: "Error", description: result.error, variant: "destructive" });
@@ -132,7 +132,7 @@ export function ScheduleManager() {
   const onSubmit = async (values: SessionFormValues) => {
     setIsSubmitting(true);
     const result = editingSession
-      ? await updateScheduleSession(editingSession.id, values)
+      ? await updateScheduleSession(editingSession.id, editingSession.date, values)
       : await addScheduleSession(values);
 
     if (result.success) {
@@ -159,11 +159,13 @@ export function ScheduleManager() {
     // Gracefully handle invalid date strings before parsing
     return sessions.map(session => {
         try {
+            // Dates are 'YYYY-MM-DD', so add T00:00:00 to parse in local timezone without shifting day.
             return new Date(session.date + 'T00:00:00');
         } catch (e) {
+            console.error("Invalid date in schedule data:", session.date);
             return null;
         }
-    }).filter(date => date !== null) as Date[];
+    }).filter(date => date !== null && !isNaN(date.valueOf())) as Date[];
   }, [sessions]);
 
 
@@ -352,7 +354,7 @@ export function ScheduleManager() {
                             <Button variant="ghost" size="icon" onClick={() => handleEdit(session)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(session.id)}>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(session)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
