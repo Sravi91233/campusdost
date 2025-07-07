@@ -1,16 +1,28 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query } from 'firebase/firestore';
 import type { ScheduleSession } from '@/types';
 import { revalidatePath } from 'next/cache';
 
 const scheduleCollectionRef = collection(db, 'schedule');
 
 export async function getSchedule(): Promise<ScheduleSession[]> {
-  const q = query(scheduleCollectionRef, orderBy("date"), orderBy("time"));
+  // Fetch without ordering to avoid the need for a composite index.
+  const q = query(scheduleCollectionRef);
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ScheduleSession));
+  const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ScheduleSession));
+
+  // Sort the results here on the server.
+  sessions.sort((a, b) => {
+    const dateComparison = a.date.localeCompare(b.date);
+    if (dateComparison !== 0) {
+      return dateComparison;
+    }
+    return a.time.localeCompare(b.time);
+  });
+
+  return sessions;
 }
 
 export async function addScheduleSession(session: Omit<ScheduleSession, 'id'>) {
