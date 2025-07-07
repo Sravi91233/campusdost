@@ -114,38 +114,46 @@ export function BuddyMatcher({ potentialBuddies, connections, onConnectionsUpdat
   return (
     <div className="space-y-6">
       {/* Incoming Requests Section */}
-      {incomingRequests.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 px-1"><BellRing className="h-4 w-4 text-primary" /> Connection Requests</h3>
-          {incomingRequests.map(({ profile, connection }) => {
-            if (!connection) return null;
-            const isProcessing = processingId === connection.id;
-            return (
-              <Card key={profile.uid}>
-                <CardContent className="p-3 flex items-center gap-4">
-                  <Avatar>
-                    <AvatarImage src={`https://placehold.co/40x40.png`} alt={profile.name} data-ai-hint="person face" />
-                    <AvatarFallback>{profile.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-grow">
-                    <p className="font-semibold">{profile.name}</p>
-                    <p className="text-sm text-muted-foreground">Wants to connect</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="icon" variant="outline" className="h-9 w-9 border-green-500 text-green-500 hover:bg-green-500/10 hover:text-green-600" onClick={() => handleAccept(connection.id)} disabled={isProcessing}>
-                      {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                    </Button>
-                    <Button size="icon" variant="outline" className="h-9 w-9 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDeclineOrCancel(connection.id)} disabled={isProcessing}>
-                      {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-           <Separator />
-        </div>
-      )}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2 px-1"><BellRing className="h-4 w-4 text-primary" /> Incoming Requests</h3>
+        {incomingRequests.length > 0 ? (
+          <div className="space-y-2">
+            {incomingRequests.map(({ profile, connection }) => {
+              if (!connection) return null;
+              const isProcessing = processingId === connection.id;
+              return (
+                <Card key={profile.uid}>
+                  <CardContent className="p-3 flex items-center gap-4">
+                    <Avatar>
+                      <AvatarImage src={`https://placehold.co/40x40.png`} alt={profile.name} data-ai-hint="person face" />
+                      <AvatarFallback>{profile.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-grow">
+                      <p className="font-semibold">{profile.name}</p>
+                      <p className="text-sm text-muted-foreground">Wants to connect</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="icon" variant="outline" className="h-9 w-9 border-green-500 text-green-500 hover:bg-green-500/10 hover:text-green-600" onClick={() => handleAccept(connection.id)} disabled={isProcessing}>
+                        {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      </Button>
+                      <Button size="icon" variant="outline" className="h-9 w-9 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDeclineOrCancel(connection.id)} disabled={isProcessing}>
+                        {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+           <Card className="border-dashed bg-transparent shadow-none">
+             <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                You have no pending connection requests.
+             </CardContent>
+          </Card>
+        )}
+         <Separator />
+      </div>
 
       {/* Connected Buddies Section */}
       {connectedBuddies.length > 0 && (
