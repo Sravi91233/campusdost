@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { QrCode } from "lucide-react";
+import { LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
@@ -13,13 +13,19 @@ export default function Home() {
           Your smart university induction starts here.
         </p>
         <p className="text-md text-foreground/80">
-          This experience is designed for your mobile device. Scan the QR code on your wristband to begin your personalized journey.
+          Log in or create an account to access your personalized schedule, campus map, and connect with other students.
         </p>
-        <div className="flex justify-center pt-8">
-          <Button asChild size="lg" className="text-lg px-10 py-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:-translate-y-1 bg-gradient-to-r from-primary to-accent text-primary-foreground">
-            <Link href="/dashboard">
-              <QrCode className="mr-3 h-6 w-6" />
-              Begin Your Journey
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
+           <Button asChild size="lg" className="w-full sm:w-auto text-lg px-10 py-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:-translate-y-1">
+            <Link href="/login">
+              <LogIn className="mr-3 h-6 w-6" />
+              Login
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="w-full sm:w-auto text-lg px-10 py-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:-translate-y-1">
+            <Link href="/signup">
+              <UserPlus className="mr-3 h-6 w-6" />
+              Sign Up
             </Link>
           </Button>
         </div>
@@ -27,4 +33,3 @@ export default function Home() {
     </main>
   );
 }
-
