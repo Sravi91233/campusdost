@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -24,7 +23,11 @@ export function ChatDialog({ connection, userProfile, buddyProfile, onClose }: C
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   useEffect(() => {
     const unsubscribe = getMessages(connection.id, (loadedMessages) => {
@@ -35,12 +38,7 @@ export function ChatDialog({ connection, userProfile, buddyProfile, onClose }: C
 
   useEffect(() => {
     // Scroll to bottom when new messages arrive
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({
-        top: scrollAreaRef.current.scrollHeight,
-        behavior: 'smooth',
-      });
-    }
+    scrollToBottom();
   }, [messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -78,7 +76,7 @@ export function ChatDialog({ connection, userProfile, buddyProfile, onClose }: C
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="h-[450px] p-4" ref={scrollAreaRef}>
+        <ScrollArea className="h-[450px] p-4">
           <div className="space-y-6 pr-4">
             {messages.map((msg) => {
               const isCurrentUser = msg.senderId === userProfile.uid;
@@ -97,6 +95,7 @@ export function ChatDialog({ connection, userProfile, buddyProfile, onClose }: C
                 </div>
               );
             })}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
         
