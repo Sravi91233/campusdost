@@ -15,7 +15,7 @@ export function LogoutButton() {
         logout();
         toast({ title: "Logged Out", description: "You have been successfully logged out." });
         // Use router.replace to prevent going back to the dashboard via browser history.
-        router.replace("/login");
+        router.replace("/");
     };
 
     return (
