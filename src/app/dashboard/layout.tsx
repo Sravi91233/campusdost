@@ -1,8 +1,8 @@
+import { ProtectedRoute } from "@/components/protected-route";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BookOpenCheck, User, Shield } from "lucide-react";
+import { BookOpenCheck, User } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { MapProvider } from "@/context/MapContext";
+import { LogoutButton } from "@/components/logout-button";
 
 export default function DashboardLayout({
   children,
@@ -10,7 +10,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <MapProvider>
+    <ProtectedRoute>
       <div className="min-h-screen bg-background font-body">
         <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 items-center justify-between">
@@ -19,14 +19,9 @@ export default function DashboardLayout({
               <span className="font-bold text-xl font-headline">Campus Compass</span>
             </Link>
             <div className="flex items-center gap-4">
-              <Button asChild variant="ghost" size="icon">
-                <Link href="/admin">
-                  <Shield className="h-5 w-5" />
-                  <span className="sr-only">Admin Panel</span>
-                </Link>
-              </Button>
+              <LogoutButton />
               <Avatar>
-                <AvatarImage src="https://placehold.co/40x40.png" alt="Student" data-ai-hint="student avatar" />
+                <AvatarImage src="https://placehold.co/40x40.png" alt="Student" />
                 <AvatarFallback>
                   <User />
                 </AvatarFallback>
@@ -36,6 +31,6 @@ export default function DashboardLayout({
         </header>
         <main className="container py-8">{children}</main>
       </div>
-    </MapProvider>
+    </ProtectedRoute>
   );
 }

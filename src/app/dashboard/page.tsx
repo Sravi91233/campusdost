@@ -1,80 +1,13 @@
+'use client'
+import { useAuth } from "@/context/AuthContext"
 
-import { CampusMap } from "@/components/campus-map";
-import { Chatbot } from "@/components/chatbot";
-import { Schedule } from "@/components/schedule";
-import { BuddyMatcher } from "@/components/buddy-matcher";
-import { FeedbackForm } from "@/components/feedback-form";
-import { CampusDiscoveryChallenge } from "@/components/campus-discovery-challenge";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Map, MessageCircle, Users, FileText, CalendarDays, Trophy } from "lucide-react";
-import { getSchedule } from "@/services/scheduleService";
-import { getMapCorners } from "@/services/mapConfigService";
-import { getVisibleLocations } from "@/services/locationService";
-
-export default async function DashboardPage() {
-  const scheduleData = await getSchedule();
-  const mapCorners = await getMapCorners();
-  const visibleLocations = await getVisibleLocations();
-
+export default function DashboardPage() {
+  const { userProfile } = useAuth();
+  
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
-      <div className="lg:col-span-2 space-y-8">
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3 text-2xl font-headline"><CalendarDays className="text-primary h-6 w-6"/> Your Induction Schedule</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Schedule scheduleData={scheduleData} />
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-           <CardHeader>
-            <CardTitle className="flex items-center gap-3 text-2xl font-headline"><Map className="text-primary h-6 w-6"/> Interactive Campus Map</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CampusMap initialLocations={visibleLocations} initialCorners={mapCorners} />
-          </CardContent>
-        </Card>
-
-      </div>
-
-      <div className="space-y-8">
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3 text-xl font-headline"><MessageCircle className="text-primary h-5 w-5"/> AI Chatbot Assistant</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Chatbot />
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3 text-xl font-headline"><Trophy className="text-primary h-5 w-5"/> Campus Discovery Challenge</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CampusDiscoveryChallenge />
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3 text-xl font-headline"><Users className="text-primary h-5 w-5"/> Find Your Buddy</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BuddyMatcher />
-          </CardContent>
-        </Card>
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3 text-xl font-headline"><FileText className="text-primary h-5 w-5"/> Session Feedback</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FeedbackForm />
-          </CardContent>
-        </Card>
-      </div>
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold">Welcome to your Dashboard, {userProfile?.name || 'Student'}!</h1>
+      <p>This is your personalized space. More features coming soon!</p>
     </div>
   );
 }
