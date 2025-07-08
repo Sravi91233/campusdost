@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { SignUpSchema } from "@/types";
@@ -25,6 +25,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { auth } from "@/lib/firebase";
+import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
 
 const streams = [
     "Computer Science and Engineering (CSE)",
@@ -91,11 +93,23 @@ const streams = [
     "Plant Pathology"
 ];
 
+const OtpSchema = z.object({
+  otp: z.string().length(6, "Your OTP must be 6 characters."),
+});
+
+declare global {
+  interface Window {
+    recaptchaVerifier?: RecaptchaVerifier;
+    confirmationResult?: ConfirmationResult;
+  }
+}
 
 export function SignUpForm() {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
   const { signUp } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<'details' | 'otp'>('details');
+  const [signUpData, setSignUpData] = useState<z.infer<typeof SignUpSchema> | null>(null);
 
   const form = useForm<z.infer<typeof SignUpSchema>>({
     resolver: zodResolver(SignUpSchema),
@@ -103,41 +117,132 @@ export function SignUpForm() {
       name: "",
       email: "",
       password: "",
+      phoneNumber: "",
       registrationNo: "",
       stream: "",
     },
   });
 
-  async function onSubmit(values: z.infer<typeof SignUpSchema>) {
-    setIsLoading(true);
-    const result = await signUp(values);
-    setIsLoading(false);
+  const otpForm = useForm<z.infer<typeof OtpSchema>>({
+    resolver: zodResolver(OtpSchema),
+    defaultValues: { otp: "" },
+  });
 
-    if (result.success) {
-      toast({
-        title: "Account Created",
-        description: "Welcome! Redirecting to your dashboard...",
-      });
-      // The redirect is now handled by the AuthRouter component based on the
-      // updated context. This form no longer needs to push to the router.
-    } else {
-      toast({
-        title: "Sign Up Failed",
-        description: result.error || "An unexpected error occurred.",
-        variant: "destructive",
+  // Set up reCAPTCHA verifier
+  useEffect(() => {
+    if (step === 'details') {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': () => {
+          // reCAPTCHA solved, allow sign-up
+        }
       });
     }
+    return () => {
+      window.recaptchaVerifier?.clear();
+    };
+  }, [step]);
+  
+
+  async function onDetailsSubmit(values: z.infer<typeof SignUpSchema>) {
+    setIsLoading(true);
+    setSignUpData(values); // Store form data
+    
+    const appVerifier = window.recaptchaVerifier!;
+    try {
+      const confirmationResult = await signInWithPhoneNumber(auth, values.phoneNumber, appVerifier);
+      window.confirmationResult = confirmationResult;
+      setStep('otp');
+      toast({ title: "Verification code sent", description: "Please check your phone for the OTP." });
+    } catch (error) {
+      console.error("SMS Error:", error);
+      toast({
+        title: "Failed to send OTP",
+        description: "Please check the phone number and try again. Ensure it includes the country code (e.g., +1).",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function onOtpSubmit(values: z.infer<typeof OtpSchema>) {
+    if (!signUpData || !window.confirmationResult) return;
+    setIsLoading(true);
+
+    try {
+      // Confirm the OTP
+      await window.confirmationResult.confirm(values.otp);
+      
+      // OTP is correct, now proceed with the original sign-up logic
+      const result = await signUp(signUpData);
+      
+      if (result.success) {
+        toast({
+          title: "Account Created",
+          description: "Welcome! Redirecting to your dashboard...",
+        });
+        // The redirect is now handled by the AuthRouter
+      } else {
+        toast({
+          title: "Sign Up Failed",
+          description: result.error || "An unexpected error occurred.",
+          variant: "destructive",
+        });
+        setStep('details'); // Go back to details if email exists etc.
+      }
+    } catch (error) {
+      console.error("OTP/SignUp Error:", error);
+      toast({
+        title: "Verification Failed",
+        description: "The OTP you entered was incorrect. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  if (step === 'otp') {
+    return (
+       <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-bold">Verify Your Phone</CardTitle>
+          <CardDescription>Enter the 6-digit code we sent to your number.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...otpForm}>
+            <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-4">
+              <FormField control={otpForm.control} name="otp" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Verification Code</FormLabel>
+                  <FormControl>
+                    <Input placeholder="123456" {...field} autoComplete="one-time-code" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? <Loader2 className="animate-spin" /> : "Verify & Create Account"}
+              </Button>
+            </form>
+          </Form>
+           <Button variant="link" onClick={() => setStep('details')} className="mt-4 w-full">Back to details</Button>
+        </CardContent>
+      </Card>
+    )
   }
   
   return (
     <Card className="w-full max-w-md shadow-lg">
+      <div id="recaptcha-container"></div>
       <CardHeader className="text-center">
         <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
         <CardDescription>Join our community to get started.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onDetailsSubmit)} className="space-y-4">
             <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
@@ -158,6 +263,13 @@ export function SignUpForm() {
                   <FormControl><Input type="password" placeholder="••••••••" {...field} autoComplete="new-password"/></FormControl>
                   <FormMessage />
                 </FormItem>
+            )}/>
+            <FormField control={form.control} name="phoneNumber" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone Number (with country code)</FormLabel>
+                <FormControl><Input placeholder="+1 123 456 7890" {...field} autoComplete="tel"/></FormControl>
+                <FormMessage />
+              </FormItem>
             )}/>
             <FormField control={form.control} name="registrationNo" render={({ field }) => (
                 <FormItem>
@@ -220,7 +332,7 @@ export function SignUpForm() {
               </FormItem>
             )}/>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? <Loader2 className="animate-spin" /> : "Create Account"}
+              {isLoading ? <Loader2 className="animate-spin" /> : "Send Verification Code"}
             </Button>
           </form>
         </Form>

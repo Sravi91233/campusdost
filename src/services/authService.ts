@@ -2,22 +2,16 @@
 
 import { db } from '@/lib/firebase';
 import {
-  collection,
   doc,
   setDoc,
   getDoc,
-  query,
-  where,
-  getDocs,
-  limit,
 } from 'firebase/firestore';
 import { SignUpSchema } from '@/types';
 import type { z } from 'zod';
 import type { UserProfile } from '@/types';
+import type { User as FirebaseAuthUser } from 'firebase/auth';
 
 type SignUpData = z.infer<typeof SignUpSchema>;
-
-const usersCollectionRef = collection(db, 'users');
 
 /**
  * Normalizes a date string (from ISO or YYYY-MM-DD) to a YYYY-MM-DD string.
@@ -42,87 +36,41 @@ function normalizeDateToYYYYMMDD(dateStr: string | undefined): string | null {
   }
 }
 
-// WARNING: THIS IS AN INSECURE AUTHENTICATION SYSTEM.
-// This has been implemented as per a specific user request to bypass Firebase Authentication.
-// Storing and querying plaintext passwords is a significant security vulnerability.
-
-export async function signUpUser(data: SignUpData): Promise<{ success: true, profile: UserProfile } | { success: false, error: string }> {
-  try {
-    // Check if user already exists
-    const q = query(usersCollectionRef, where("email", "==", data.email), limit(1));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      return { success: false, error: 'An account with this email already exists.' };
-    }
-
-    // Normalize the induction date to ensure it's in YYYY-MM-DD format
-    const normalizedDate = normalizeDateToYYYYMMDD(data.inductionDate);
-    if (!normalizedDate) {
-        return { success: false, error: 'Invalid induction date provided.' };
-    }
-
-    // Create a new user document with a generated UID
-    const newUserDocRef = doc(usersCollectionRef);
-    
-    // This object includes the password and is ONLY used for writing to Firestore.
-    const userProfileWithPassword = {
-      uid: newUserDocRef.id,
-      email: data.email,
-      name: data.name,
-      registrationNo: data.registrationNo,
-      stream: data.stream,
-      inductionDate: normalizedDate, // Use the normalized date
-      role: 'user' as const, // Default role for new sign-ups
-      password: data.password, // Storing password in plaintext
-    };
-
-    await setDoc(newUserDocRef, userProfileWithPassword);
-    
-    // Create and return the "safe" profile without the password.
-    const { password, ...safeProfile } = userProfileWithPassword;
-
-    return { success: true, profile: safeProfile };
-  } catch (error: any) {
-    console.error("Sign up error:", error);
-    return { success: false, error: "An unexpected error occurred during sign-up." };
+/**
+ * Creates a user profile document in Firestore after successful Firebase Auth registration.
+ * @param user - The user object from Firebase Authentication.
+ * @param data - The additional data from the sign-up form.
+ * @returns The newly created user profile.
+ */
+export async function createUserProfileInFirestore(
+  user: FirebaseAuthUser,
+  data: SignUpData
+): Promise<UserProfile> {
+  const userDocRef = doc(db, 'users', user.uid);
+  
+  const normalizedDate = normalizeDateToYYYYMMDD(data.inductionDate);
+  if (!normalizedDate) {
+    throw new Error('Invalid induction date provided.');
   }
+
+  // Create the "safe" profile without the password.
+  const userProfile: UserProfile = {
+    uid: user.uid,
+    email: data.email,
+    name: data.name,
+    registrationNo: data.registrationNo,
+    stream: data.stream,
+    inductionDate: normalizedDate,
+    role: 'user', // Default role for new sign-ups
+    phoneNumber: data.phoneNumber,
+  };
+
+  await setDoc(userDocRef, userProfile);
+  return userProfile;
 }
 
-export async function loginUser(email: string, passwordAttempt: string): Promise<{ success: true; profile: UserProfile } | { success: false; error: string; }> {
-  try {
-    const q = query(usersCollectionRef, where("email", "==", email), limit(1));
-    const querySnapshot = await getDocs(q);
 
-    if (querySnapshot.empty) {
-      return { success: false, error: 'Invalid email or password.' };
-    }
-
-    const userDoc = querySnapshot.docs[0];
-    const userData = userDoc.data(); // This object from Firestore includes the password field.
-
-    if (userData.password !== passwordAttempt) {
-      return { success: false, error: 'Invalid email or password.' };
-    }
-
-    // Create and return the "safe" profile without the password.
-    const safeProfile: UserProfile = {
-      uid: userDoc.id,
-      email: userData.email,
-      name: userData.name,
-      registrationNo: userData.registrationNo,
-      inductionDate: userData.inductionDate,
-      role: userData.role,
-      stream: userData.stream,
-    };
-
-    return { success: true, profile: safeProfile };
-  } catch (error: any) {
-    console.error("Login error:", error);
-    return { success: false, error: "An unexpected error occurred during login." };
-  }
-}
-
-export async function getUserProfile(uid: string): Promise<{ success: true, profile: UserProfile } | { success: false, error: string}> {
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     try {
         const userDocRef = doc(db, 'users', uid);
         const userDocSnap = await getDoc(userDocRef);
@@ -136,12 +84,14 @@ export async function getUserProfile(uid: string): Promise<{ success: true, prof
               inductionDate: userData.inductionDate,
               role: userData.role,
               stream: userData.stream,
+              phoneNumber: userData.phoneNumber,
             };
-            return { success: true, profile: safeProfile };
+            return safeProfile;
         } else {
-            return { success: false, error: 'User profile not found.' };
+            return null;
         }
     } catch (error: any) {
-        return { success: false, error: error.message };
+        console.error("Error getting user profile:", error);
+        return null;
     }
 }

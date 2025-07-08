@@ -38,6 +38,7 @@ export async function getUsersByStream(stream: string, currentUserId: string): P
           uid: data.uid,
           email: data.email,
           name: data.name,
+          phoneNumber: data.phoneNumber,
           registrationNo: data.registrationNo,
           inductionDate: data.inductionDate,
           role: data.role,

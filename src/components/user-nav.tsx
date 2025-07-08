@@ -19,8 +19,8 @@ export function UserNav() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     toast({ title: "Logged Out", description: "You have been successfully logged out." });
     router.replace("/");
   };
@@ -62,6 +62,9 @@ export function UserNav() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+          Phone: {userProfile.phoneNumber}
+        </div>
         <div className="px-2 py-1.5 text-xs text-muted-foreground">
           Registration No: {userProfile.registrationNo}
         </div>
