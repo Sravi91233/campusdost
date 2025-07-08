@@ -1,3 +1,6 @@
+"use client";
+
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { ScheduleManager } from "@/components/admin-schedule-manager";
@@ -6,6 +9,17 @@ import { AdminMapConfig } from "@/components/admin-map-config";
 import { CalendarDays, MapPin, Map } from "lucide-react";
 
 export default function AdminPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const currentTab = searchParams.get('tab') || 'schedule';
+
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', value);
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
@@ -15,7 +29,7 @@ export default function AdminPage() {
         </p>
       </div>
       
-      <Tabs defaultValue="schedule" className="space-y-4">
+      <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList className="grid w-full grid-cols-1 md:w-auto md:grid-cols-3">
           <TabsTrigger value="schedule"><CalendarDays className="mr-2"/>Schedule</TabsTrigger>
           <TabsTrigger value="locations"><MapPin className="mr-2"/>Map Locations</TabsTrigger>

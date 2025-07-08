@@ -47,8 +47,10 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-3 space-y-6">
-          <Schedule scheduleData={scheduleData} />
-          <Card>
+          <div id="schedule" className="scroll-mt-24">
+            <Schedule scheduleData={scheduleData} />
+          </div>
+          <Card id="map" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Compass /> Interactive Campus Map</CardTitle>
             </CardHeader>
@@ -60,7 +62,7 @@ export default function DashboardPage() {
 
         {/* Right Column */}
         <div className="lg:col-span-2 space-y-6">
-           <Card id="buddy-feature-card">
+           <Card id="buddy-feature-card" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Handshake /> Find a Buddy</CardTitle>
             </CardHeader>
@@ -68,7 +70,7 @@ export default function DashboardPage() {
               <BuddyFeatureWrapper />
             </CardContent>
           </Card>
-          <Card>
+          <Card id="ai-assistant" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Bot /> AI Assistant</CardTitle>
             </CardHeader>
@@ -76,7 +78,7 @@ export default function DashboardPage() {
               <Chatbot />
             </CardContent>
           </Card>
-          <Card>
+          <Card id="discovery-challenge" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Users /> Campus Discovery Challenge</CardTitle>
             </CardHeader>
@@ -84,7 +86,7 @@ export default function DashboardPage() {
               <CampusDiscoveryChallenge />
             </CardContent>
           </Card>
-           <Card>
+           <Card id="feedback" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><MessageSquare/> Session Feedback</CardTitle>
             </CardHeader>
