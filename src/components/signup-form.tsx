@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -152,13 +153,13 @@ export function SignUpForm() {
       console.error("SMS Error:", error);
       let description = "An unexpected error occurred. Please try again.";
       if (error.code === 'auth/captcha-check-failed') {
-        description = "reCAPTCHA verification failed. Please ensure your app's domain is added to the list of 'Authorized domains' in your Firebase project's Authentication settings.";
+        description = "reCAPTCHA verification failed. Please ensure this app's domain is added to the list of 'Authorized domains' in your Firebase project's Authentication settings.";
       } else if (error.code === 'auth/billing-not-enabled') {
         description = "Phone sign-in is a paid feature. Please ensure you have upgraded to the Blaze plan and linked a valid billing account in your Firebase console.";
       } else if (error.code === 'auth/invalid-phone-number') {
         description = "The phone number you entered is not valid. Please check it and include the country code (e.g., +1).";
-      } else {
-        description = "Could not send verification code. Please check the phone number and your network connection.";
+      } else if (error.code === 'auth/timeout') {
+         description = "The request timed out. Please check your network connection and try again.";
       }
       toast({
         title: "Failed to send OTP",
@@ -207,147 +208,150 @@ export function SignUpForm() {
       setIsLoading(false);
     }
   }
-
-  if (step === 'otp') {
-    return (
-       <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Verify Your Phone</CardTitle>
-          <CardDescription>Enter the 6-digit code we sent to your number.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...otpForm}>
-            <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-4">
-              <FormField control={otpForm.control} name="otp" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Verification Code</FormLabel>
-                  <FormControl>
-                    <Input placeholder="123456" {...field} autoComplete="one-time-code" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? <Loader2 className="animate-spin" /> : "Verify & Create Account"}
-              </Button>
-            </form>
-          </Form>
-           <Button variant="link" onClick={() => setStep('details')} className="mt-4 w-full">Back to details</Button>
-        </CardContent>
-      </Card>
-    )
-  }
   
   return (
     <Card className="w-full max-w-md shadow-lg">
       <div id="recaptcha-container"></div>
-      <CardHeader className="text-center">
-        <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
-        <CardDescription>Join our community to get started.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onDetailsSubmit)} className="space-y-4">
-            <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl><Input placeholder="John Doe" {...field} autoComplete="name"/></FormControl>
-                  <FormMessage />
-                </FormItem>
-            )}/>
-            <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl><Input placeholder="student@university.edu" {...field} autoComplete="email"/></FormControl>
-                  <FormMessage />
-                </FormItem>
-            )}/>
-            <FormField control={form.control} name="password" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl><Input type="password" placeholder="••••••••" {...field} autoComplete="new-password"/></FormControl>
-                  <FormMessage />
-                </FormItem>
-            )}/>
-            <FormField control={form.control} name="phoneNumber" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone Number (with country code)</FormLabel>
-                <FormControl><Input placeholder="+1 123 456 7890" {...field} autoComplete="tel"/></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}/>
-            <FormField control={form.control} name="registrationNo" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Registration Number</FormLabel>
-                  <FormControl><Input placeholder="e.g. 1234567" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-            )}/>
-            <FormField control={form.control} name="stream" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Stream</FormLabel>
-                   <Select onValueChange={field.onChange} defaultValue={field.value}>
+      
+      {step === 'details' && (
+        <>
+          <CardHeader className="text-center">
+            <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
+            <CardDescription>Join our community to get started.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onDetailsSubmit)} className="space-y-4">
+                <FormField control={form.control} name="name" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl><Input placeholder="John Doe" {...field} autoComplete="name"/></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                )}/>
+                <FormField control={form.control} name="email" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl><Input placeholder="student@university.edu" {...field} autoComplete="email"/></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                )}/>
+                <FormField control={form.control} name="password" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl><Input type="password" placeholder="••••••••" {...field} autoComplete="new-password"/></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                )}/>
+                <FormField control={form.control} name="phoneNumber" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number (with country code)</FormLabel>
+                    <FormControl><Input placeholder="+1 123 456 7890" {...field} autoComplete="tel"/></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}/>
+                <FormField control={form.control} name="registrationNo" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Registration Number</FormLabel>
+                      <FormControl><Input placeholder="e.g. 1234567" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                )}/>
+                <FormField control={form.control} name="stream" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stream</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your stream of study" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {streams.map(stream => (
+                            <SelectItem key={stream} value={stream}>{stream}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                )}/>
+                <FormField control={form.control} name="inductionDate" render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Induction Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(new Date(field.value + 'T00:00:00'), "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value ? new Date(field.value + 'T00:00:00') : undefined}
+                          onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : undefined)}
+                          disabled={(date) => date < new Date("1900-01-01")}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}/>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? <Loader2 className="animate-spin" /> : "Send Verification Code"}
+                </Button>
+              </form>
+            </Form>
+            <div className="mt-4 text-center text-sm">
+              Already have an account?{" "}
+              <Link href="/login" className="underline">
+                Login
+              </Link>
+            </div>
+          </CardContent>
+        </>
+      )}
+
+      {step === 'otp' && (
+        <>
+          <CardHeader className="text-center">
+            <CardTitle className="text-3xl font-bold">Verify Your Phone</CardTitle>
+            <CardDescription>Enter the 6-digit code we sent to your number.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...otpForm}>
+              <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-4">
+                <FormField control={otpForm.control} name="otp" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Verification Code</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your stream of study" />
-                      </SelectTrigger>
+                      <Input placeholder="123456" {...field} autoComplete="one-time-code" />
                     </FormControl>
-                    <SelectContent>
-                      {streams.map(stream => (
-                        <SelectItem key={stream} value={stream}>{stream}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-            )}/>
-            <FormField control={form.control} name="inductionDate" render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Induction Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(new Date(field.value + 'T00:00:00'), "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value ? new Date(field.value + 'T00:00:00') : undefined}
-                      onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : undefined)}
-                      disabled={(date) => date < new Date("1900-01-01")}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}/>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? <Loader2 className="animate-spin" /> : "Send Verification Code"}
-            </Button>
-          </form>
-        </Form>
-        <div className="mt-4 text-center text-sm">
-          Already have an account?{" "}
-          <Link href="/login" className="underline">
-            Login
-          </Link>
-        </div>
-      </CardContent>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? <Loader2 className="animate-spin" /> : "Verify & Create Account"}
+                </Button>
+              </form>
+            </Form>
+            <Button variant="link" onClick={() => setStep('details')} className="mt-4 w-full">Back to details</Button>
+          </CardContent>
+        </>
+      )}
     </Card>
   );
 }
