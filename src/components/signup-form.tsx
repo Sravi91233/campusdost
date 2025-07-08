@@ -160,6 +160,8 @@ export function SignUpForm() {
         description = "The phone number you entered is not valid. Please check it and include the country code (e.g., +1).";
       } else if (error.code === 'auth/timeout') {
          description = "The request timed out. Please check your network connection and try again.";
+      } else if (error.code === 'auth/too-many-requests') {
+        description = "We've blocked all requests from this device due to unusual activity. Please try again later.";
       }
       toast({
         title: "Failed to send OTP",
