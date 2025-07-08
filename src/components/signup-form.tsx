@@ -159,7 +159,7 @@ export function SignUpForm() {
       } else if (error.code === 'auth/invalid-phone-number') {
         description = "The phone number you entered is not valid. Please check it and include the country code (e.g., +1).";
       } else if (error.code === 'auth/timeout') {
-         description = "The request timed out. Please check your network connection and try again.";
+         description = "The reCAPTCHA verification timed out. This can happen on a slow connection. Please try again.";
       } else if (error.code === 'auth/too-many-requests') {
         description = "We've blocked all requests from this device due to unusual activity. Please try again later.";
       }
