@@ -151,7 +151,9 @@ export function SignUpForm() {
     } catch (error: any) {
       console.error("SMS Error:", error);
       let description = "An unexpected error occurred. Please try again.";
-      if (error.code === 'auth/billing-not-enabled') {
+      if (error.code === 'auth/captcha-check-failed') {
+        description = "reCAPTCHA verification failed. Please ensure your app's domain is added to the list of 'Authorized domains' in your Firebase project's Authentication settings.";
+      } else if (error.code === 'auth/billing-not-enabled') {
         description = "Phone sign-in is a paid feature. Please ensure you have upgraded to the Blaze plan and linked a valid billing account in your Firebase console.";
       } else if (error.code === 'auth/invalid-phone-number') {
         description = "The phone number you entered is not valid. Please check it and include the country code (e.g., +1).";
