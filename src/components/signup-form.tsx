@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { SignUpSchema } from "@/types";
@@ -128,27 +128,21 @@ export function SignUpForm() {
     defaultValues: { otp: "" },
   });
 
-  // Set up reCAPTCHA verifier
-  useEffect(() => {
-    if (step === 'details') {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': () => {
-          // reCAPTCHA solved, allow sign-up
-        }
-      });
-    }
-    return () => {
-      window.recaptchaVerifier?.clear();
-    };
-  }, [step]);
-  
-
   async function onDetailsSubmit(values: z.infer<typeof SignUpSchema>) {
     setIsLoading(true);
     setSignUpData(values); // Store form data
     
-    const appVerifier = window.recaptchaVerifier!;
+    // Clear any old verifier to avoid conflicts
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
+    }
+    
+    // Create the verifier instance "just-in-time"
+    const appVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      'size': 'invisible',
+    });
+    window.recaptchaVerifier = appVerifier;
+
     try {
       const confirmationResult = await signInWithPhoneNumber(auth, values.phoneNumber, appVerifier);
       window.confirmationResult = confirmationResult;
@@ -158,9 +152,10 @@ export function SignUpForm() {
       console.error("SMS Error:", error);
       toast({
         title: "Failed to send OTP",
-        description: "Please check the phone number and try again. Ensure it includes the country code (e.g., +1).",
+        description: "Please check the phone number. This error can also occur if billing is not enabled on your Firebase project.",
         variant: "destructive",
       });
+      appVerifier.clear(); // Clean up the verifier on failure
     } finally {
       setIsLoading(false);
     }
