@@ -148,11 +148,19 @@ export function SignUpForm() {
       window.confirmationResult = confirmationResult;
       setStep('otp');
       toast({ title: "Verification code sent", description: "Please check your phone for the OTP." });
-    } catch (error) {
+    } catch (error: any) {
       console.error("SMS Error:", error);
+      let description = "An unexpected error occurred. Please try again.";
+      if (error.code === 'auth/billing-not-enabled') {
+        description = "Phone sign-in is a paid feature. Please ensure you have upgraded to the Blaze plan and linked a valid billing account in your Firebase console.";
+      } else if (error.code === 'auth/invalid-phone-number') {
+        description = "The phone number you entered is not valid. Please check it and include the country code (e.g., +1).";
+      } else {
+        description = "Could not send verification code. Please check the phone number and your network connection.";
+      }
       toast({
         title: "Failed to send OTP",
-        description: "Please check the phone number. This error can also occur if billing is not enabled on your Firebase project.",
+        description: description,
         variant: "destructive",
       });
       appVerifier.clear(); // Clean up the verifier on failure
