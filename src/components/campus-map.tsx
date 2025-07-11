@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
@@ -47,7 +48,8 @@ const availableIcons = Object.keys(iconMap);
 
 
 export function CampusMap({ initialLocations, initialCorners }: { initialLocations: MapLocation[], initialCorners: MapCorners | null }) {
-  const [locations] = useState<MapLocation[]>(initialLocations || []);
+  // Use props to keep the component in sync with real-time updates from parent
+  const locations = initialLocations;
   const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
   const { focusedVenueName, setFocusedVenueName } = useMap();
   const mapRef = useRef<google.maps.Map | null>(null);

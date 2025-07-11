@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { getSchedule } from "@/services/scheduleService";
-import { getVisibleLocations } from "@/services/locationService";
+import { getVisibleLocations, onVisibleLocationsUpdate } from "@/services/locationService";
 import { getMapCorners } from "@/services/mapConfigService";
 import { Schedule } from "@/components/schedule";
 import { CampusMap } from "@/components/campus-map";
@@ -24,17 +24,22 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchInitialData() {
       setIsLoading(true);
-      const [schedule, locations, corners] = await Promise.all([
+      // Fetch static data once
+      const [schedule, corners] = await Promise.all([
         getSchedule(),
-        getVisibleLocations(),
         getMapCorners()
       ]);
       setScheduleData(schedule);
-      setMapLocations(locations);
       setMapCorners(corners);
       setIsLoading(false);
     }
     fetchInitialData();
+
+    // Set up a real-time listener for map locations
+    const unsubscribe = onVisibleLocationsUpdate(setMapLocations);
+
+    // Clean up the listener when the component unmounts
+    return () => unsubscribe();
   }, []);
 
   return (
