@@ -3,7 +3,8 @@
 
 import { useEffect, useState } from "react";
 import { getSchedule } from "@/services/scheduleService";
-import { getVisibleLocations, onVisibleLocationsUpdate } from "@/services/locationService";
+import { onSnapshot, doc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { getMapCorners } from "@/services/mapConfigService";
 import { Schedule } from "@/components/schedule";
 import { CampusMap } from "@/components/campus-map";
@@ -35,8 +36,16 @@ export default function DashboardPage() {
     }
     fetchInitialData();
 
-    // Set up a real-time listener for map locations
-    const unsubscribe = onVisibleLocationsUpdate(setMapLocations);
+    // Set up a real-time listener for map locations directly in the component.
+    const visibleLocationsDocRef = doc(db, 'map-data', 'visible');
+    const unsubscribe = onSnapshot(visibleLocationsDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setMapLocations(Array.isArray(data.locations) ? data.locations : []);
+      } else {
+        setMapLocations([]);
+      }
+    });
 
     // Clean up the listener when the component unmounts
     return () => unsubscribe();
