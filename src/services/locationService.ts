@@ -2,27 +2,12 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, getDoc } from 'firebase/firestore';
 import type { MapLocation } from '@/types';
 import { revalidatePath } from 'next/cache';
 import { rebuildVisibleLocationsCache } from './mapConfigService';
 
 const locationsCollectionRef = collection(db, 'locations');
-
-export function onVisibleLocationsUpdate(callback: (locations: MapLocation[]) => void): () => void {
-  const visibleLocationsDocRef = doc(db, 'map-data', 'visible');
-  
-  const unsubscribe = onSnapshot(visibleLocationsDocRef, (docSnap) => {
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      callback(Array.isArray(data.locations) ? data.locations : []);
-    } else {
-      callback([]);
-    }
-  });
-
-  return unsubscribe;
-}
 
 export async function getLocations(): Promise<MapLocation[]> {
   const snapshot = await getDocs(query(locationsCollectionRef));
